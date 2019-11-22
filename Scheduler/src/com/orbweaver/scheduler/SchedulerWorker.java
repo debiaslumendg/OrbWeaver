@@ -1,27 +1,34 @@
 package com.orbweaver.scheduler;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.IOException;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import java.io.*;
 import java.net.Socket;
 
 public class SchedulerWorker implements Runnable{
 
-    protected Socket clientSocket = null;
-    protected String serverText   = null;
-
-    public SchedulerWorker(Socket clientSocket, String serverText) {
+    private Socket clientSocket;
+    private SchedulerServer scheduler;
+    public SchedulerWorker(Socket clientSocket , SchedulerServer scheduler) {
         this.clientSocket = clientSocket;
-        this.serverText   = serverText;
+        this.scheduler = scheduler;
     }
 
     public void run() {
         try {
+
+            //MyType my_object = gson.fromJson(jsonSource, MyType.class)
+
+
+
             InputStream input  = clientSocket.getInputStream();
+            Gson gson = new Gson();
+
+
             OutputStream output = clientSocket.getOutputStream();
             long time = System.currentTimeMillis();
-            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable: " +
-				this.serverText + " - " + time + "").getBytes());
+            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable:").getBytes());
             output.close();
             input.close();
             System.out.println("Request processed: " + time);

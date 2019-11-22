@@ -8,12 +8,23 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
         
-        // Leer de args acción y parámetros, luego ejecutar accion, pasarle al servidor los datos necesarios a traves del JSON(falta definir formato)
-
         // IP donde se hará la conexión
         InetAddress direccion;
         // Canal de comunicación con el servidor
         Socket servidor;
+        String servicio, parametro;
+
+        if (args.length < 1) {
+            System.out.println("Usage:<Servicio a ejeutar> <Parámetro del servicio>");
+            System.out.println();
+            System.exit(-1);
+        }
+
+        servicio = args[0];
+        parametro = args[1];
+        
+        // pedir al scheduler que me diga cual servidor tine disponible ese servicio
+        // y establecer la conexión con ese servidor y pasarle los parametros con JSON
 
         try {
             direccion=InetAddress.getByName("localhost");

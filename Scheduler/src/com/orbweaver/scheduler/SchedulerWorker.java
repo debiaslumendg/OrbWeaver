@@ -1,16 +1,16 @@
-package com.orbweaver.server;
+package com.orbweaver.scheduler;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-public class Worker implements Runnable{
+public class SchedulerWorker implements Runnable{
 
     protected Socket clientSocket = null;
     protected String serverText   = null;
 
-    public Worker(Socket clientSocket, String serverText) {
+    public SchedulerWorker(Socket clientSocket, String serverText) {
         this.clientSocket = clientSocket;
         this.serverText   = serverText;
     }

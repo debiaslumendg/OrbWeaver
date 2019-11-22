@@ -1,21 +1,26 @@
-package com.orbweaver.server;
+package com.orbweaver.scheduler;
 
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.LinkedList;
 
-public class Server implements Runnable {
+public class SchedulerServer implements Runnable {
 
     protected int          serverPort   = 8080;
     protected ServerSocket serverSocket = null;
     protected boolean      isStopped    = false;
     protected Thread       runningThread= null;
+    protected HashMap<Integer,ServicioInfo> mServicios ;
+    protected HashMap<Integer,ServidorInfo> mServidores ;
 
-    public Server(int port){
+    public SchedulerServer(int port){
         this.serverPort = port;
     }
 
     public void run(){
+
         synchronized(this){
             this.runningThread = Thread.currentThread();
         }

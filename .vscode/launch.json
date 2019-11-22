@@ -4,8 +4,14 @@
             "type": "java",
             "name": "CodeLens (Launch) - Main",
             "request": "launch",
-            "mainClass": "server/com.orbweaver.server.Main",
-            "projectName": "Server"
+            "mainClass": "com.orbweaver.Main"
+        },
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - Main",
+            "request": "launch",
+            "mainClass": "com.orbweaver.Main",
+            "projectName": "OrbWeaver"
         }
     ]
 }

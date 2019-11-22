@@ -4,8 +4,8 @@ import java.io.DataInputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class Main {
-    public static void main(String[] args) throws Exception {
+public class Client {
+    public static void client() throws Exception {
         
         InetAddress direccion;
         Socket servidor;

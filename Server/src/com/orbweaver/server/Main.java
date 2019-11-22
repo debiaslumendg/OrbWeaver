@@ -3,9 +3,11 @@ package com.orbweaver.server;
 public class Main {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub	
+		
+		// Leer de args puerto e IP donde se se conectará el servidor
+		int port = 1025;
 
-		Server server = new Server(1024);
+		Server server = new Server(port);
 		new Thread(server).start();
 
 		try {

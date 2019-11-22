@@ -8,6 +8,12 @@ public class Main {
 
 	public static void main(String[] args) {
 
+		if (args.length < 1) {
+			System.out.println("Usage:<client/server> <Servicio a ejeutar> <Parámetro del servicio>");
+			System.out.println();
+			System.exit(-1);
+		}
+		
 		Service serv = new Service();
 		serv.setId(1L);
 
@@ -29,7 +35,7 @@ public class Main {
 			break;
 		case "client":
 			try {
-				Client.client();
+				Client.client(args[1],args[2]);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

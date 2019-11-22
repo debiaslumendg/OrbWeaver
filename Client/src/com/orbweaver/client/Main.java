@@ -1,5 +1,6 @@
 package com.orbweaver.client;
 
+// import com.orbweaver.commons;
 import java.io.DataInputStream;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -25,6 +26,11 @@ public class Main {
         
         // pedir al scheduler que me diga cual servidor tine disponible ese servicio
         // y establecer la conexión con ese servidor y pasarle los parametros con JSON
+        
+        // RequestServiceMsg sCode = new RequestServiceMsg(0,servicio);
+        RequestServiceMsg sCode = new RequestServiceMsg(0,"wordcount");
+        Gson gson = new Gson();
+        String json = gson.toJson(sID);
 
         try {
             direccion=InetAddress.getByName("localhost");

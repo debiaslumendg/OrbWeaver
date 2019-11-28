@@ -1,16 +1,20 @@
 package com.orbweaver.scheduler;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
+import com.google.gson.stream.MalformedJsonException;
+import com.orbweaver.commons.RequestAddServerMsg;
+import com.orbweaver.commons.Util;
+
 import java.io.*;
 import java.net.Socket;
 
 public class SchedulerWorker implements Runnable{
 
     private Socket clientSocket;
-    private SchedulerServer scheduler;
-    public SchedulerWorker(Socket clientSocket , SchedulerServer scheduler) {
+    private Scheduler scheduler;
+
+
+    public SchedulerWorker(Socket clientSocket , Scheduler scheduler) {
         this.clientSocket = clientSocket;
         this.scheduler = scheduler;
     }
@@ -18,20 +22,41 @@ public class SchedulerWorker implements Runnable{
     public void run() {
         try {
 
-            //MyType my_object = gson.fromJson(jsonSource, MyType.class)
-
-
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
             InputStream input  = clientSocket.getInputStream();
-            Gson gson = new Gson();
 
+            // Obtenemos el contenido del mensaje del cliente
+            String content = Util.convertInputStreamToString(input);
 
-            OutputStream output = clientSocket.getOutputStream();
-            long time = System.currentTimeMillis();
-            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable:").getBytes());
-            output.close();
             input.close();
+
+            // Parseamos el mensaje a JSON
+            JsonObject jsonObjectMessage;
+            try {
+                jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
+            }catch (JsonSyntaxException e){
+                System.out.println("Error : incorrect message sent by client");
+                System.out.println("Message: " + content);
+
+                return ;
+            }
+
+            System.out.println(jsonObjectMessage);
+
+            int code = jsonObjectMessage.get("code").getAsInt();
+
+            switch (code){
+                case 1:
+                    RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
+                    scheduler.addServer(requestAddServerMsg.getServer());
+                break;
+            }
+
+
+            long time = System.currentTimeMillis();
             System.out.println("Request processed: " + time);
+
         } catch (IOException e) {
             //report exception somewhere.
             e.printStackTrace();

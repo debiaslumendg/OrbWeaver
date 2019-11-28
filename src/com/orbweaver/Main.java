@@ -21,17 +21,8 @@ public class Main {
 
 		switch (args[0]) {
 		case "server":
-			Server server = new Server(1024);
-			new Thread(server).start();
-
-			try {
-				Thread.sleep(60 * 1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-			System.out.println("Stopping Server");
-			server.stop();
+			Server server = new Server(1024,"1029",1202,1231,false);
+			server.run();
 			break;
 		case "client":
 			try {

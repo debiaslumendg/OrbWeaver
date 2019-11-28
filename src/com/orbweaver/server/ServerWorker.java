@@ -5,23 +5,24 @@ import java.io.OutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-public class Worker implements Runnable{
+public class ServerWorker implements Runnable{
 
     protected Socket clientSocket = null;
-    protected String serverText   = null;
+    protected Server server   = null;
 
-    public Worker(Socket clientSocket, String serverText) {
+    public ServerWorker(Server server,Socket clientSocket) {
         this.clientSocket = clientSocket;
-        this.serverText   = serverText;
+        this.server   = server;
     }
 
     public void run() {
         try {
+
             InputStream input  = clientSocket.getInputStream();
+
             OutputStream output = clientSocket.getOutputStream();
             long time = System.currentTimeMillis();
-            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable: " +
-				this.serverText + " - " + time + "").getBytes());
+            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable: ").getBytes());
             output.close();
             input.close();
             System.out.println("Request processed: " + time);

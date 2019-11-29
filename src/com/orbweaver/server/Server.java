@@ -34,8 +34,8 @@ public class Server {
     private int schedulerPort           = Constants.DEFAULT_SCHEDULER_PORT;
 
     private ArrayList<ServiceInfo> services = new ArrayList<ServiceInfo>();
-    private ArrayList<ServerObject> servers = new ArrayList<>();
-    private ServerObject myServerObject;
+    private ArrayList<ServerInfo> servers = new ArrayList<>();
+    private ServerInfo myServerInfo;
 
     private boolean      isStopped      = false;
     private int myId;
@@ -48,9 +48,9 @@ public class Server {
 
         services.add(new ServiceInfo("wordcount"));
 
-        myServerObject = new ServerObject("manuggz","127.0.0.1",this.serverPort, services);
+        myServerInfo = new ServerInfo("manuggz","127.0.0.1",this.serverPort, services);
 
-        servers.add(myServerObject);
+        servers.add(myServerInfo);
         iAmScheduler = isCheduler;
     }
 
@@ -89,7 +89,7 @@ public class Server {
                     , e);
         }
 
-        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(myServerObject);
+        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(myServerInfo);
         json = gson.toJson(requestAddServerMsg);
         System.out.println("[Server] Sending " + json + " to the Scheduler");
 
@@ -129,10 +129,10 @@ public class Server {
 
         System.out.println(jsonObjectMessage);
 
-        int code = jsonObjectMessage.get("code").getAsInt();
+        int status = jsonObjectMessage.get("status").getAsInt();
 
-        switch (code){
-            case Constants.CODE_SUCCESS_REQUEST:
+        switch (status){
+            case Constants.STATUS_SUCCESS_REQUEST:
                 RequestAddServerAnswerMsg requestAddServerAnswerMsg = gson.fromJson(json, RequestAddServerAnswerMsg.class);
                 System.out.println("[Server] Got from Scheduler: ");
                 services = requestAddServerAnswerMsg.getServices();
@@ -142,7 +142,7 @@ public class Server {
 
                 myId = requestAddServerAnswerMsg.getServer_id();
 
-                myServerObject = getServerByID(myId);
+                myServerInfo = getServerByID(myId);
 
                 System.out.println("[Server] \tMy ID: " + myId);
                 System.out.println("[Server] Added to the Group...");
@@ -175,10 +175,10 @@ public class Server {
         return -1;
     }
 
-    private ServerObject getServerByID(int id){
-        for(ServerObject serverObject : servers){
-            if(serverObject.getId() == id) {
-                return serverObject;
+    private ServerInfo getServerByID(int id){
+        for(ServerInfo serverInfo : servers){
+            if(serverInfo.getId() == id) {
+                return serverInfo;
             }
         }
 
@@ -186,16 +186,16 @@ public class Server {
 
     }
 
-    private void sendJsonToServer(String json , ServerObject serverObject){
+    private void sendJsonToServer(String json , ServerInfo serverInfo){
 
         Socket socket;
 
         try {
-            socket = new Socket(serverObject.getAddress(),serverObject.getPort());
+            socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
         } catch (IOException e) {
             throw new RuntimeException(
                     String.format("Error: Cannot connect to Server ( %s , %d)",
-                            serverObject.getAddress(),serverObject.getPort()), e);
+                            serverInfo.getAddress(), serverInfo.getPort()), e);
         }
 
 
@@ -205,7 +205,7 @@ public class Server {
         } catch (IOException e) {
             throw new RuntimeException(
                     String.format("Error: Cannot open connection to Server ( %s , %d)",
-                            serverObject.getAddress(),serverObject.getPort()), e);
+                            serverInfo.getAddress(), serverInfo.getPort()), e);
         }
 
         try {
@@ -225,35 +225,35 @@ public class Server {
     /**
      * Envia un mensaje al grupo informandoles del recien llegado
      * TODO: Hacer ordenamiento de los mensajes agregar / eliminar servidor
-     * @param newServerObject
+     * @param newServerInfo
      */
-    private void sendUpdateNewServer(ServerObject newServerObject) {
+    private void sendUpdateNewServer(ServerInfo newServerInfo) {
 
         Gson gson = new Gson();
 
-        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(newServerObject);
+        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(newServerInfo);
         String json = gson.toJson(requestAddServerMsg);
 
-        for(ServerObject serverObject : servers) {
-            if(serverObject.getId() != myServerObject.getId()) {
-                sendJsonToServer(json, serverObject);
+        for(ServerInfo serverInfo : servers) {
+            if(serverInfo.getId() != myServerInfo.getId()) {
+                sendJsonToServer(json, serverInfo);
             }
         }
 
     }
 
-    public synchronized int addServer(ServerObject serverObject){
+    public synchronized int addServer(ServerInfo serverInfo){
 
         // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
         int newServerID;
         if(iAmScheduler) {
             newServerID = servers.get(servers.size() - 1).getId() + 1;
-            serverObject.setId(newServerID);
+            serverInfo.setId(newServerID);
         }else{
-            newServerID = serverObject.getId();
+            newServerID = serverInfo.getId();
         }
 
-        for(ServiceInfo serviceInfo : serverObject.getServices()){
+        for(ServiceInfo serviceInfo : serverInfo.getServices()){
 
             int newServiceID = getServiceIDByName(serviceInfo.getName());
 
@@ -270,18 +270,18 @@ public class Server {
         }
 
         if(iAmScheduler) {
-            sendUpdateNewServer(serverObject);
+            sendUpdateNewServer(serverInfo);
         }
 
-        servers.add(serverObject);
+        servers.add(serverInfo);
 
-        System.out.format("Added server ID=%d :\n\tAddress - (%s,%d)\n", newServerID,serverObject.getAddress(),serverObject.getPort());
-        System.out.format("\tServices %s\n", serverObject.getServices());
+        System.out.format("Added server ID=%d :\n\tAddress - (%s,%d)\n", newServerID, serverInfo.getAddress(), serverInfo.getPort());
+        System.out.format("\tServices %s\n", serverInfo.getServices());
 
         return newServerID;
     }
 
-    public ArrayList<ServerObject> getServers(){
+    public ArrayList<ServerInfo> getServers(){
         return servers;
     }
 
@@ -290,7 +290,7 @@ public class Server {
         if(!iAmScheduler) {
             addServerToGroup();
         }else{
-            myServerObject.setId(0);
+            myServerInfo.setId(0);
             for(int i = 0 ; i < services.size() ; i++){
                 services.get(i).setId(i);
             }
@@ -381,6 +381,15 @@ public class Server {
      *      --portc | -pc : Puerto del coordinador (opcional, se usara el default)
      *      --ports | -ps : Puerto en donde el scheduler recibirá mensajes (Opcional, se usara el default)
      *      --as-scheduler | --sh
+     *
+     *      Ejemplo 1: Servidor y Scheduler
+     *      server --sh
+
+     *      Ejemplo 2: Servidor
+     *      server -h 127.0.0.1
+     *
+     *      Si estan en la misma máquina se pueden utilizar los argumentos de puertos para diferenciarlos.
+     *
      * @param args
      */
     public static void main(String[] args) {
@@ -419,4 +428,19 @@ public class Server {
         scheduler.run();
     }
 
+    public ArrayList<ServerInfo> getAllServersByServiceName(String serviceName) {
+
+        ArrayList<ServerInfo> servers = new ArrayList<>();
+
+        for(ServerInfo server : this.servers){
+            for(ServiceInfo serviceInfo : server.getServices()){
+                if (serviceInfo.getName().equals(serviceName)){
+                    servers.add(server);
+                    break;
+                }
+            }
+        }
+
+        return servers;
+    }
 }

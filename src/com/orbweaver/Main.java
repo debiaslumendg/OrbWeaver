@@ -1,6 +1,6 @@
 package com.orbweaver;
 
-import com.orbweaver.client.Client;
+import com.orbweaver.client.WordCount;
 import com.orbweaver.commons.Service;
 import com.orbweaver.server.Server;
 
@@ -25,11 +25,6 @@ public class Main {
 			server.run();
 			break;
 		case "client":
-			try {
-				Client.client(args[1],args[2]);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
 				break;
 		}
 

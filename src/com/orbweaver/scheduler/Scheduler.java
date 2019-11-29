@@ -1,6 +1,24 @@
+package com.orbweaver.scheduler;
+
+import com.orbweaver.commons.Constants;
+import com.orbweaver.commons.RequestServiceAnswerSuccessMsg;
+import com.orbweaver.commons.ServerInfo;
+import com.orbweaver.commons.ServiceInfo;
+import com.orbweaver.scheduler.tables.RequestServer;
+import com.orbweaver.server.Server;
+
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.UUID;
+
 /**
  *
  * Este es el hilo que se inicia cuando el Servidor es elegido para ser Scheduler.
+ *
+ * Atiende solicitudes como un servidor y crea un hilo para menajarlas.
  *
  * Atiende :
  * 		Solicitudes de requerimientos de clientes.
@@ -13,22 +31,6 @@
  * 	    Manuel  Gonzalez    11-10390
  * 	    Pedro   Perez       10-10574
  */
-
-package com.orbweaver.scheduler;
-
-import com.orbweaver.commons.Constants;
-import com.orbweaver.commons.ServerObject;
-import com.orbweaver.commons.ServiceInfo;
-import com.orbweaver.scheduler.tables.RequestServer;
-import com.orbweaver.server.Server;
-
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.ArrayList;
-import java.util.HashMap;
-
 public class Scheduler implements Runnable{
 
 	/** Puerto en el que corre el Scheduler , esperando mensajes.*/
@@ -44,7 +46,7 @@ public class Scheduler implements Runnable{
     private Server parentServer = null;
 
     /**Lista de requests que está manejando el Scheduler*/
-	private HashMap<Integer, RequestServer> mRequestServer = new HashMap<>() ;
+	private ArrayList<RequestServer> requests = new ArrayList<>() ;
 
 	/**
 	 * Crea una instancia del Scheduler
@@ -150,7 +152,7 @@ public class Scheduler implements Runnable{
 	 * @param server Objeto conteniendo información del nuevo servidor
 	 * @return ID del nuevo servidor
 	 */
-	public int addServer(ServerObject server) {
+	public int addServer(ServerInfo server) {
 		return parentServer.addServer(server);
 	}
 
@@ -167,9 +169,92 @@ public class Scheduler implements Runnable{
 
 	/**
 	 * Lista de servidores en el grupo. Actualizada cuando se agrega un servidor al grupo.
-	 * @return
+	 * @return servidores en el grupo
 	 */
-	public ArrayList<ServerObject> getServers() {
+	public ArrayList<ServerInfo> getServers() {
 		return parentServer.getServers();
+	}
+
+	/**
+	 * Crea la respuesta satisfactoria al cliente de un requerimiento de servicio
+	 * @param serviceName Nombre único del servicio
+	 * @return clase request
+	 */
+	public RequestServiceAnswerSuccessMsg createRequestService(String serviceName) {
+
+		ArrayList<ServerInfo> serversServices = ordServersByLoad(parentServer.getAllServersByServiceName(serviceName));
+
+		ServerInfo server = serversServices.get(0); // El que tenga menor carga
+		RequestServer requestServer = new RequestServer(UUID.randomUUID().toString(), server.getId());
+		requests.add(requestServer);
+		return new RequestServiceAnswerSuccessMsg(server,requestServer.getId());
+	}
+
+	/**
+	 * Ordena una lista de servidores de quien tiene menos carga de trabajo a -> quien tiene más carga de trabajo
+	 *
+	 * Utiliza un algoritmo de burbuja
+	 * @param servers array de servidor
+	 * @return array de servidores ordenados
+	 */
+	private ArrayList<ServerInfo> ordServersByLoad(ArrayList<ServerInfo> servers) {
+
+		int n = servers.size();
+
+		/** Utilizo arrays primitivos para hacer el algoritmo más rápido*/
+		int[] loads = new int[n];
+
+		for(int i = 0; i < n ; i++){
+			loads[i] = getLoadForServerByID(servers.get(i).getId());
+		}
+
+		boolean ordered = false;
+		boolean changed = false;
+
+		int i;
+		int aux;
+		ServerInfo auxS;
+		while(!ordered){
+
+			i = 0;
+			changed = false;
+			ordered = true;
+			while (i < n - 1) {
+				if (loads[i + 1] < loads[i]) {
+					aux = loads[i];
+					loads[i] = loads[i + 1];
+					loads[i + 1] = aux;
+
+					auxS = servers.get(i);
+					servers.set(i,servers.get(i + 1));
+					servers.set(i + 1,auxS);
+
+					changed = true;
+
+				}
+				i ++ ;
+			}
+
+			if(changed) ordered = false;
+		}
+
+
+		return servers;
+	}
+
+	/**
+	 * Obtiene el numero de request que un servidor está ejecutando (o se tiene planeado que ejecute)
+	 * @param idServer ID del servidor
+	 * @return numero de request asociadas al servidor
+	 */
+	private int getLoadForServerByID(int idServer) {
+
+		int load = 0;
+		for(RequestServer requestServer : requests){
+			if(requestServer.getIdServer() == idServer){
+				load ++;
+			}
+		}
+		return load;
 	}
 }

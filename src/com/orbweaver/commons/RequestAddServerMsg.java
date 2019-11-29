@@ -3,17 +3,17 @@ package com.orbweaver.commons;
 
 public class RequestAddServerMsg {
     private int code = Constants.CODE_REQUEST_ADD_SERVER;
-    private ServerObject server;
+    private ServerInfo server;
 
-    public RequestAddServerMsg(ServerObject server) {
+    public RequestAddServerMsg(ServerInfo server) {
         this.server = server;
     }
 
-    public ServerObject getServer() {
+    public ServerInfo getServer() {
         return server;
     }
 
-    public void setServer(ServerObject server) {
+    public void setServer(ServerInfo server) {
         this.server = server;
     }
 

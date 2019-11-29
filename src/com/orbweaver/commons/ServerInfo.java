@@ -2,7 +2,7 @@ package com.orbweaver.commons;
 
 import java.util.List;
 
-public class ServerObject {
+public class ServerInfo {
 
     private int id;
     private String name;
@@ -11,7 +11,7 @@ public class ServerObject {
     private List<ServiceInfo> services;
 
 
-    public ServerObject(String name, String address, int port, List<ServiceInfo> services) {
+    public ServerInfo(String name, String address, int port, List<ServiceInfo> services) {
         this.name = name;
         this.address = address;
         this.port = port;

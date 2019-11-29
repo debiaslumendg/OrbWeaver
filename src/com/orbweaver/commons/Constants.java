@@ -6,7 +6,9 @@ public class Constants {
     public static final int DEFAULT_SERVER_PORT     = 7070;
 
     public static final int CODE_REQUEST_ADD_SERVER  = 1;
-    public static final int CODE_SUCCESS_REQUEST  = 2;
+    public static final int CODE_REQUEST_EXEC_SERVICE  = 2;
+
+    public static final int STATUS_SUCCESS_REQUEST = 2;
 
 
 }

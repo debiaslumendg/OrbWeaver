@@ -38,7 +38,7 @@ public class RequestServer {
     }
 
     public enum StatusRequest {
-        WAITING_SERVER_RESPONSE, // Esperando por el servidor se comunique con el scheduler para decir que la esta ejecutando
+        WAITING_FOR_SERVER_EXEC, // Esperando por el servidor se comunique con el scheduler para decir que la esta ejecutando
         RUNNING,                  // La request está corriendo en el servidor
         DONE                      // El servidor ejecutó la request, el cliente recibió la respuesta y se actualizó la tabla.
     }
@@ -46,7 +46,7 @@ public class RequestServer {
     /**
      * Estado del request
      */
-    private StatusRequest status = StatusRequest.WAITING_SERVER_RESPONSE;
+    private StatusRequest status = StatusRequest.WAITING_FOR_SERVER_EXEC;
 
     public int getIdServer() {
         return idServer;

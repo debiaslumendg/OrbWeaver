@@ -1,5 +1,0 @@
-servidor1 1025
-servidor2 1026
-servidor3 1027
-servidor4 1028
-scheduler 1029

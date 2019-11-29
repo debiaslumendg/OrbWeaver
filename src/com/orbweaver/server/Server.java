@@ -54,6 +54,9 @@ public class Server {
         iAmScheduler = isCheduler;
     }
 
+    /**
+     * Este metodo se encarga de comunicarse con el Scheduler y decirle que lo agregue al grupo.
+     */
     private void addServerToGroup(){
         System.out.format("[Server] Connecting to Scheduler(%s,%d) to add me to the Group\n",
                 this.coordinatorAddress,this.coordinatorPort);
@@ -77,7 +80,7 @@ public class Server {
         DataOutputStream dataOutputStream;
 
         JsonObject jsonObjectMessage;
-        String json;
+        String content;
 
         try {
             dataOutputStream = new DataOutputStream(socketScheduler.getOutputStream());
@@ -90,11 +93,11 @@ public class Server {
         }
 
         RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(myServerInfo);
-        json = gson.toJson(requestAddServerMsg);
-        System.out.println("[Server] Sending " + json + " to the Scheduler");
+        content = gson.toJson(requestAddServerMsg);
+        System.out.println("[Server] Sending " + content + " to the Scheduler");
 
         try {
-            dataOutputStream.writeUTF(json);
+            dataOutputStream.writeUTF(content);
         } catch (IOException e) {
             throw new RuntimeException(
                     String.format("Error: Cannot write JSON to Scheduler ( %s , %d)",
@@ -106,7 +109,7 @@ public class Server {
         try {
 
             // Obtenemos el contenido del mensaje del scheduler
-            json = dataInputStream.readUTF();
+            content = dataInputStream.readUTF();
         } catch (IOException e) {
             throw new RuntimeException(
                     String.format("Error: Cannot read answer from Scheduler ( %s , %d)",
@@ -116,10 +119,10 @@ public class Server {
 
         // Parseamos el mensaje a JSON
         try {
-            jsonObjectMessage = new JsonParser().parse(json).getAsJsonObject();
+            jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
         }catch (JsonSyntaxException e){
             System.out.println("Error : incorrect message sent by Scheduler");
-            System.out.println("Message: " + json);
+            System.out.println("Message: " + content);
             throw new RuntimeException(
                     String.format("Error: incorrect message sent by Scheduler ( %s , %d)",
                             this.coordinatorAddress,this.coordinatorPort)
@@ -133,7 +136,7 @@ public class Server {
 
         switch (status){
             case Constants.STATUS_SUCCESS_REQUEST:
-                RequestAddServerAnswerMsg requestAddServerAnswerMsg = gson.fromJson(json, RequestAddServerAnswerMsg.class);
+                RequestAddServerAnswerMsg requestAddServerAnswerMsg = gson.fromJson(content, RequestAddServerAnswerMsg.class);
                 System.out.println("[Server] Got from Scheduler: ");
                 services = requestAddServerAnswerMsg.getServices();
                 System.out.println("[Server] \tServices: " + services);
@@ -242,6 +245,19 @@ public class Server {
 
     }
 
+    /**
+     * Agrega un servidor a su lista de miembros.
+     * -    Para agregarse un servidor al grupo se debe comunicar con el coordinador, para nuestro proyecto es el mismo Scheduler.
+     * -    El scheduler lo agrega a su lista de miembros interna y le asigna un ID a él y a sus servicios nuevos que el scheduler no conozca.
+     * -    El scheduler después de agregarlo a su lista interna le envía un mensaje a todos los miembros del grupo, con
+     *      la información del nuevo miembro del grupo para que se actualizen.
+     *      Es necesario que todos los miembros sepan quienes son el resto, por si:
+     *          * Ocurre un error y el scheduler y el scheduler back up mueren, cualquier puede tomar el lugar de scheduler.
+     *              Por lo que necesita la lista de miembros para seleccionar entre ellos el nuevo scheduler.
+     *
+     * @param serverInfo Informacion del nuevo servidor a agregar
+     * @return ID del nuevo servidor
+     */
     public synchronized int addServer(ServerInfo serverInfo){
 
         // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
@@ -281,6 +297,10 @@ public class Server {
         return newServerID;
     }
 
+    /**
+     *
+     * @return lista de servidores miembros del grupo
+     */
     public ArrayList<ServerInfo> getServers(){
         return servers;
     }
@@ -288,13 +308,19 @@ public class Server {
     public void run(){
 
         if(!iAmScheduler) {
+            // Si este servidor NO funcionará como Scheduler entonces pedimos que se nos agregue al grupo de servidores
             addServerToGroup();
         }else{
+            // Si este servidor funcionará como Scheduler establecemos nuestro estado inicial
             myServerInfo.setId(0);
             for(int i = 0 ; i < services.size() ; i++){
                 services.get(i).setId(i);
             }
+
+            // Iniciamos el scheduler
             new Thread(new Scheduler(this,schedulerPort)).start();
+
+            // TODO: Falta el proceso automático de elección del siguiente Scheduler
         }
 
         openServerSocket();
@@ -428,6 +454,11 @@ public class Server {
         scheduler.run();
     }
 
+    /**
+     * Obtiene todos los servidores que ejecutan un servicio dado
+     * @param serviceName Nombre del servicio
+     * @return lista de servidores
+     */
     public ArrayList<ServerInfo> getAllServersByServiceName(String serviceName) {
 
         ArrayList<ServerInfo> servers = new ArrayList<>();
@@ -442,5 +473,12 @@ public class Server {
         }
 
         return servers;
+    }
+
+    public ServiceInterfaz getServiceExec(String name) {
+        if(name.equals("wordcount")){
+            return wordCountService;
+        }
+        return null;
     }
 }

@@ -1,9 +1,7 @@
 package com.orbweaver.server;
 
 import com.google.gson.*;
-import com.orbweaver.commons.Constants;
-import com.orbweaver.commons.RequestAddServerAnswerMsg;
-import com.orbweaver.commons.RequestAddServerMsg;
+import com.orbweaver.commons.*;
 
 import java.io.*;
 import java.net.Socket;
@@ -59,7 +57,7 @@ public class ServerWorker implements Runnable{
             return ;
         }
 
-        System.out.println("[Scheduler] " + jsonObjectMessage);
+        System.out.println("[Server] " + jsonObjectMessage);
 
         int code = jsonObjectMessage.get("code").getAsInt();
 
@@ -70,16 +68,17 @@ public class ServerWorker implements Runnable{
                 server.addServer(requestAddServerMsg.getServer());
 
                 break;
+            case Constants.CODE_REQUEST_EXEC_SERVICE:
+                RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
+
+                if(isValidRequestID(requestServiceMsg.getIdRequest())){
+                    ServiceInterfaz service = server.getServiceExec(requestServiceMsg.getName());
+                    service.handleClient(clientSocket,dataInputStream,dataOutputStream);
+                }
+
+                break;
         }
 
-        /*try {
-            dataOutputStream.writeUTF(content);
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
-                            this.clientSocket.getInetAddress().getHostName(),this.clientSocket.getPort())
-                    , e);
-        }*/
 
         //long time = System.currentTimeMillis();
         //System.out.println("Request processed: " + time);
@@ -91,5 +90,10 @@ public class ServerWorker implements Runnable{
             //report exception somewhere.
             e.printStackTrace();
         }
+    }
+
+
+    private boolean isValidRequestID(String idRequest) {
+        return true;
     }
 }

@@ -1,16 +1,15 @@
 package com.orbweaver.server;
 
 import com.google.gson.Gson;
-import com.orbweaver.commons.Constants;
-import com.orbweaver.commons.RequestAddServerMsg;
-import com.orbweaver.commons.ServerObject;
-import com.orbweaver.commons.ServiceInfo;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
+import com.orbweaver.commons.*;
 import com.orbweaver.scheduler.Scheduler;
 import org.apache.http.conn.util.InetAddressUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -39,6 +38,7 @@ public class Server {
     private ServerObject myServerObject;
 
     private boolean      isStopped      = false;
+    private int myId;
 
     public Server(int serverPort,String coordinatorAddress, int coordinatorPort,int schedulerPort,boolean isCheduler){
         this.serverPort = serverPort;
@@ -66,15 +66,18 @@ public class Server {
                     , e);
         }
 
-        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(myServerObject);
 
         Gson gson = new Gson();
-        String json = gson.toJson(requestAddServerMsg);
-        System.out.println("[Server] Sending " + json + " to the Scheduler");
-        DataOutputStream d;
+
+        DataInputStream dataInputStream;
+        DataOutputStream dataOutputStream;
+
+        JsonObject jsonObjectMessage;
+        String json;
 
         try {
-            d = new DataOutputStream(socketScheduler.getOutputStream());
+            dataOutputStream = new DataOutputStream(socketScheduler.getOutputStream());
+            dataInputStream = new DataInputStream(new BufferedInputStream(socketScheduler.getInputStream()));
         } catch (IOException e) {
             throw new RuntimeException(
                     String.format("Error: Cannot open connection to Scheduler ( %s , %d)",
@@ -82,14 +85,71 @@ public class Server {
                     , e);
         }
 
+        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(myServerObject);
+        json = gson.toJson(requestAddServerMsg);
+        System.out.println("[Server] Sending " + json + " to the Scheduler");
+
         try {
-            d.writeBytes(json);
+            dataOutputStream.writeUTF(json);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(
+                    String.format("Error: Cannot write JSON to Scheduler ( %s , %d)",
+                            this.coordinatorAddress,this.coordinatorPort)
+                    , e);
         }
 
 
         try {
+
+            // Obtenemos el contenido del mensaje del scheduler
+            json = dataInputStream.readUTF();
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    String.format("Error: Cannot read answer from Scheduler ( %s , %d)",
+                            this.coordinatorAddress,this.coordinatorPort)
+                    , e);
+        }
+
+        // Parseamos el mensaje a JSON
+        try {
+            jsonObjectMessage = new JsonParser().parse(json).getAsJsonObject();
+        }catch (JsonSyntaxException e){
+            System.out.println("Error : incorrect message sent by Scheduler");
+            System.out.println("Message: " + json);
+            throw new RuntimeException(
+                    String.format("Error: incorrect message sent by Scheduler ( %s , %d)",
+                            this.coordinatorAddress,this.coordinatorPort)
+                    , e);
+
+        }
+
+        System.out.println(jsonObjectMessage);
+
+        int code = jsonObjectMessage.get("code").getAsInt();
+
+        switch (code){
+            case Constants.CODE_SUCCESS_REQUEST:
+                RequestAddServerAnswerMsg requestAddServerAnswerMsg = gson.fromJson(json, RequestAddServerAnswerMsg.class);
+                System.out.println("[Server] Got from Scheduler: ");
+                services = requestAddServerAnswerMsg.getServices();
+                System.out.println("[Server] \tServices: " + services);
+                servers = requestAddServerAnswerMsg.getServers();
+                System.out.println("[Server] \tServers: " + servers);
+
+                myId = requestAddServerAnswerMsg.getServer_id();
+
+                myServerObject = getServerByID(myId);
+
+                System.out.println("[Server] \tMy ID: " + myId);
+                System.out.println("[Server] Added to the Group...");
+
+                break;
+        }
+
+
+        try {
+            dataOutputStream.close();
+            dataInputStream.close();
             socketScheduler.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -101,7 +161,7 @@ public class Server {
         return services;
     }
 
-    private int getServiceID(String name){
+    private int getServiceIDByName(String name){
         for(ServiceInfo serviceInfo : services){
             if(serviceInfo.getName().equals(name)) {
                 return serviceInfo.getId();
@@ -111,7 +171,18 @@ public class Server {
         return -1;
     }
 
-    private void sendJsonObjectToServer(String json , ServerObject serverObject){
+    private ServerObject getServerByID(int id){
+        for(ServerObject serverObject : servers){
+            if(serverObject.getId() == id) {
+                return serverObject;
+            }
+        }
+
+        return null;
+
+    }
+
+    private void sendJsonToServer(String json , ServerObject serverObject){
 
         Socket socket;
 
@@ -149,29 +220,32 @@ public class Server {
 
     private void sendUpdateNewServer(ServerObject newServerObject) {
 
-        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(newServerObject);
         Gson gson = new Gson();
+
+        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(newServerObject);
         String json = gson.toJson(requestAddServerMsg);
 
         for(ServerObject serverObject : servers) {
             if(serverObject.getId() != myServerObject.getId()) {
-                sendJsonObjectToServer(json, serverObject);
+                sendJsonToServer(json, serverObject);
             }
         }
+
     }
 
-    public synchronized void addServer(ServerObject serverObject){
+    public synchronized int addServer(ServerObject serverObject){
 
-        int newServerID = servers.size();
+        // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
+        int newServerID = servers.get(servers.size() - 1).getId() + 1;
 
         serverObject.setId(newServerID);
 
         for(ServiceInfo serviceInfo : serverObject.getServices()){
 
-            int newServiceID = getServiceID(serviceInfo.getName());
+            int newServiceID = getServiceIDByName(serviceInfo.getName());
 
             if(newServiceID == -1) {
-                newServiceID = services.size();
+                newServiceID = services.get(services.size() - 1).getId() + 1;
                 services.add(serviceInfo);
             }
 
@@ -186,6 +260,8 @@ public class Server {
 
         System.out.format("Added server ID=%d :\n\tAddress - (%s,%d)\n", newServerID,serverObject.getAddress(),serverObject.getPort());
         System.out.format("\tServices %s\n", serverObject.getServices());
+
+        return newServerID;
     }
 
     public ArrayList<ServerObject> getServers(){

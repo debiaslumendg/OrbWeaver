@@ -2,6 +2,7 @@ package com.orbweaver.scheduler;
 
 import com.orbweaver.commons.Constants;
 import com.orbweaver.commons.ServerObject;
+import com.orbweaver.commons.ServiceInfo;
 import com.orbweaver.scheduler.tables.RequestServer;
 import com.orbweaver.server.Server;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Scheduler implements Runnable{
@@ -102,7 +104,15 @@ public class Scheduler implements Runnable{
 	}
 	 */
 
-    public void addServer(ServerObject server) {
-        parentServer.addServer(server);
-    }
+	public int addServer(ServerObject server) {
+		return parentServer.addServer(server);
+	}
+
+
+	public ArrayList<ServiceInfo> getServices() {
+		return parentServer.getServices();
+	}
+	public ArrayList<ServerObject> getServers() {
+		return parentServer.getServers();
+	}
 }

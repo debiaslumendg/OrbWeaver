@@ -50,6 +50,12 @@ public class ServerObject {
         this.services = services;
     }
 
+    @Override
+    public String toString() {
+        return "Server( id= " + getId()   +  ", name= " + getName() + " , address = "  + getAddress() +
+                ", port = "   + getPort() +  ", services = " + getServices() + " ) ";
+    }
+
     public int getId() {
         return id;
     }

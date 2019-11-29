@@ -37,7 +37,7 @@ public class SchedulerWorker implements Runnable{
             dataOutputStream = new DataOutputStream(clientSocket.getOutputStream());
         } catch (IOException e) {
             throw new RuntimeException(
-                    String.format("Error: Cannot open connection to Server ( %s , %d)",
+                    String.format("[Scheduler] Error: Cannot open connection to Client ( %s , %d)",
                             this.clientSocket.getInetAddress().getHostName(),this.clientSocket.getPort())
                     , e);
         }
@@ -47,7 +47,7 @@ public class SchedulerWorker implements Runnable{
             content = dataInputStream.readUTF();
         } catch (IOException e) {
             throw new RuntimeException(
-                    String.format("Error: Cannot read JSON from Server ( %s , %d)",
+                    String.format("[Scheduler] Error: Cannot read JSON from Client ( %s , %d)",
                             this.clientSocket.getInetAddress().getHostName(),this.clientSocket.getPort())
                     , e);
         }
@@ -57,13 +57,13 @@ public class SchedulerWorker implements Runnable{
         try {
             jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
         }catch (JsonSyntaxException e){
-            System.out.println("Error : incorrect message sent by client");
-            System.out.println("Message: " + content);
+            System.out.println("[Scheduler] Error : incorrect message sent by client");
+            System.out.println("[Scheduler] Message: " + content);
 
             return ;
         }
 
-        System.out.println(jsonObjectMessage);
+        System.out.println("[Scheduler] " + jsonObjectMessage);
 
         int code = jsonObjectMessage.get("code").getAsInt();
 
@@ -89,7 +89,7 @@ public class SchedulerWorker implements Runnable{
             dataOutputStream.writeUTF(content);
         } catch (IOException e) {
             throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
+                    String.format("Error: Cannot write JSON to Client ( %s , %d)",
                             this.clientSocket.getInetAddress().getHostName(),this.clientSocket.getPort())
                     , e);
         }

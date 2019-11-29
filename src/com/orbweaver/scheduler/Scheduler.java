@@ -1,3 +1,19 @@
+/**
+ *
+ * Este es el hilo que se inicia cuando el Servidor es elegido para ser Scheduler.
+ *
+ * Atiende :
+ * 		Solicitudes de requerimientos de clientes.
+ * 		Solicitudes de agregar al grupo de servidores.
+ * 		y ..
+ *
+ *
+ *  Autores:
+ *      Natascha Gamboa      12-11250
+ * 	    Manuel  Gonzalez    11-10390
+ * 	    Pedro   Perez       10-10574
+ */
+
 package com.orbweaver.scheduler;
 
 import com.orbweaver.commons.Constants;
@@ -15,21 +31,34 @@ import java.util.HashMap;
 
 public class Scheduler implements Runnable{
 
+	/** Puerto en el que corre el Scheduler , esperando mensajes.*/
 	private int          serverPort   = Constants.DEFAULT_SCHEDULER_PORT;
-	private ServerSocket serverSocket = null;
-	private boolean      isStopped    = false;
-	//private Thread       runningThread= null;
 
+	/** Socket servidor , esperando clientes los cuales pueden ser programas clientes o servidores.*/
+	private ServerSocket serverSocket = null;
+
+	/** Indica si se ha detenido el Scheduler*/
+	private boolean      isStopped    = false;
+
+	/**Apuntador al Servidor que inició el hilo*/
     private Server parentServer = null;
 
+    /**Lista de requests que está manejando el Scheduler*/
 	private HashMap<Integer, RequestServer> mRequestServer = new HashMap<>() ;
 
-
+	/**
+	 * Crea una instancia del Scheduler
+	 * @param parentServer Servidor que inició el Scheduler
+	 * @param port Puerto en el que correrá el Scheduler
+	 */
 	public  Scheduler(Server parentServer , int port){
 	    this.parentServer = parentServer;
 		serverPort = port;
 	}
 
+	/**
+	 * Espera a los clientes y cuando recibe uno crea un hilo para atenderlo
+	 */
 	private void waitForMessages(){
 		while(! isStopped){
 
@@ -46,6 +75,10 @@ public class Scheduler implements Runnable{
 			new Thread(new SchedulerWorker(clientSocket,this)).start();
 		}
 	}
+
+	/**
+	 *  Detiene al scheduler y cierra el socket
+	 */
 	public synchronized void stop(){
 		this.isStopped = true;
 		try {
@@ -55,6 +88,13 @@ public class Scheduler implements Runnable{
 		}
 	}
 
+	/**
+	 * Función principal ejecutada por el hilo.
+	 *
+	 * Inicializa el socket donde recibirá a los clientes.
+	 * Espera los mensajes
+	 * Cierra el socket cuando termina -- Terminado por el usuario ctrl-z (TODO:Falta)
+	 */
 	public void run(){
 
 		//readFileJsonServices();
@@ -104,14 +144,31 @@ public class Scheduler implements Runnable{
 	}
 	 */
 
+	/**
+	 * Agrega un servidor al grupo.
+	 * Se comunica con todos los demás servidores en el grupo comunicandoles su llegada
+	 * @param server Objeto conteniendo información del nuevo servidor
+	 * @return ID del nuevo servidor
+	 */
 	public int addServer(ServerObject server) {
 		return parentServer.addServer(server);
 	}
 
 
+	/**
+	 * Obtiene todos los servicios actuales que tiene el Servidor.
+	 * NO SON los servicios que ofrece el servidor sino los del grupo completo que él tiene, que deberían ser los actuales
+	 * porque cuando se agrega un servidor al grupo se envía en su información sus servicios ofrecidos.
+	 * @return
+	 */
 	public ArrayList<ServiceInfo> getServices() {
 		return parentServer.getServices();
 	}
+
+	/**
+	 * Lista de servidores en el grupo. Actualizada cuando se agrega un servidor al grupo.
+	 * @return
+	 */
 	public ArrayList<ServerObject> getServers() {
 		return parentServer.getServers();
 	}

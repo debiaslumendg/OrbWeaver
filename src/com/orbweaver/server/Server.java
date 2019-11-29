@@ -55,13 +55,17 @@ public class Server {
     }
 
     private void addServerToGroup(){
-        System.out.println("[Server] Connecting to Scheduler to add me to the Group");
+        System.out.format("[Server] Connecting to Scheduler(%s,%d) to add me to the Group\n",
+                this.coordinatorAddress,this.coordinatorPort);
+
         Socket socketScheduler = null;
         try {
             socketScheduler = new Socket(this.coordinatorAddress,this.coordinatorPort);
+            System.out.println("[Server] Connected to the Scheduler");
         } catch (IOException e) {
+            // TODO: Puede time out
             throw new RuntimeException(
-                    String.format("Error: Cannot connect to Scheduler ( %s , %d)",
+                    String.format("[Server] Error: Cannot connect to Scheduler ( %s , %d)",
                             this.coordinatorAddress,this.coordinatorPort)
                     , e);
         }
@@ -195,9 +199,9 @@ public class Server {
         }
 
 
-        DataOutputStream d;
+        DataOutputStream dataOutputStream;
         try {
-            d = new DataOutputStream(socket.getOutputStream());
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
         } catch (IOException e) {
             throw new RuntimeException(
                     String.format("Error: Cannot open connection to Server ( %s , %d)",
@@ -205,7 +209,7 @@ public class Server {
         }
 
         try {
-            d.writeBytes(json);
+            dataOutputStream.writeUTF(json);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -218,6 +222,11 @@ public class Server {
 
     }
 
+    /**
+     * Envia un mensaje al grupo informandoles del recien llegado
+     * TODO: Hacer ordenamiento de los mensajes agregar / eliminar servidor
+     * @param newServerObject
+     */
     private void sendUpdateNewServer(ServerObject newServerObject) {
 
         Gson gson = new Gson();
@@ -236,20 +245,28 @@ public class Server {
     public synchronized int addServer(ServerObject serverObject){
 
         // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
-        int newServerID = servers.get(servers.size() - 1).getId() + 1;
-
-        serverObject.setId(newServerID);
+        int newServerID;
+        if(iAmScheduler) {
+            newServerID = servers.get(servers.size() - 1).getId() + 1;
+            serverObject.setId(newServerID);
+        }else{
+            newServerID = serverObject.getId();
+        }
 
         for(ServiceInfo serviceInfo : serverObject.getServices()){
 
             int newServiceID = getServiceIDByName(serviceInfo.getName());
 
             if(newServiceID == -1) {
-                newServiceID = services.get(services.size() - 1).getId() + 1;
+                if(iAmScheduler) {
+                    newServiceID = services.get(services.size() - 1).getId() + 1;
+                }
                 services.add(serviceInfo);
             }
 
-            serviceInfo.setId(newServiceID);
+            if(iAmScheduler) {
+                serviceInfo.setId(newServiceID);
+            }
         }
 
         if(iAmScheduler) {
@@ -296,7 +313,7 @@ public class Server {
             }
 
             InetAddress inetAddress = clientSocket.getInetAddress();
-            System.out.format("[Scheduler] Accepted client %s \n",inetAddress.getHostAddress());
+            System.out.format("[Server] Accepted client %s \n",inetAddress.getHostAddress());
             new Thread(new ServerWorker(this,clientSocket)).start();
         }
 

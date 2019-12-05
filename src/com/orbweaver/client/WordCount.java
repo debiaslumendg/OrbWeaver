@@ -5,9 +5,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.orbweaver.commons.*;
-import com.orbweaver.server.ServiceInterfaz;
 import com.orbweaver.server.ServiceWordCountAnswerMsg;
 import com.orbweaver.server.ServiceWordCountArgMsg;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.*;
 import java.net.Socket;
@@ -36,6 +36,15 @@ public class WordCount implements   Runnable{
     private String addressScheduler;
     private String requestId;
     private ServerInfo serverInfo;
+    /** Cuando se realiza la peticion de una ejecucion al servidor si esta falla  por error del request_id se prueba a
+     *  ejecutar de nuevo la request.
+     */
+    private boolean mTryAgainRequest;
+
+    /**
+     * N intentos en ejecutar la request
+     */
+    private int ntries = 0;
 
     public WordCount(String filep, int portScheduler,String addressScheduler) {
 
@@ -50,7 +59,7 @@ public class WordCount implements   Runnable{
      */
     private boolean getRequestScheduler(){
 
-        RequestServiceAnswerSuccessMsg requestServiceAnswerSuccessMsg = null;
+        RequestServiceAnswerMsg requestServiceAnswerMsg = null;
         System.out.format("Connecting to Scheduler(%s,%d)\n",this.addressScheduler,this.portScheduler);
 
         Socket socketScheduler = null;
@@ -109,35 +118,20 @@ public class WordCount implements   Runnable{
                     , e);
         }
 
-        // Parseamos el mensaje a JSON
-        try {
-            jsonObjectMessage = new JsonParser().parse(json).getAsJsonObject();
-        }catch (JsonSyntaxException e){
-            System.out.println("Error : incorrect message sent by Scheduler");
-            System.out.println("Message: " + json);
-            throw new RuntimeException(
-                    String.format("Error: incorrect message sent by Scheduler ( %s , %d)",
-                            this.addressScheduler,this.portScheduler)
-                    , e);
 
-        }
+        requestServiceAnswerMsg = gson.fromJson(json, RequestServiceAnswerMsg.class);
 
-        System.out.println(jsonObjectMessage);
-
-        int status = jsonObjectMessage.get("status").getAsInt();
-
-        switch (status){
+        switch (requestServiceAnswerMsg.getStatus()){
             case Constants.STATUS_SUCCESS_REQUEST:
-                requestServiceAnswerSuccessMsg = gson.fromJson(json, RequestServiceAnswerSuccessMsg.class);
                 System.out.println("[Server] Got from Scheduler: ");
-                requestId = requestServiceAnswerSuccessMsg.getRequestId();
+                requestId = requestServiceAnswerMsg.getRequestId();
                 System.out.println("[Server] \trequestId: " + requestId);
-                serverInfo = requestServiceAnswerSuccessMsg.getServerInfo();
+                serverInfo = requestServiceAnswerMsg.getServerInfo();
                 System.out.println("[Server] \tserverInfo: " + serverInfo);
 
                 break;
             case STATUS_ERROR_REQUEST:
-                // TODO: Falta
+                Util.mostrarErrorPrint(requestServiceAnswerMsg.getCode());
                 break;
         }
 
@@ -149,7 +143,7 @@ public class WordCount implements   Runnable{
             e.printStackTrace();
         }
 
-        return requestServiceAnswerSuccessMsg != null;
+        return requestServiceAnswerMsg != null;
     }
 
     /**
@@ -175,7 +169,6 @@ public class WordCount implements   Runnable{
         DataInputStream dataInputStream;
         DataOutputStream dataOutputStream;
 
-        JsonObject jsonObjectMessage;
         String content;
 
         try {
@@ -183,7 +176,7 @@ public class WordCount implements   Runnable{
             dataInputStream     = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
         } catch (IOException e) {
             throw new RuntimeException(
-                    String.format("Error: Cannot open connection to Server ( %s , %d)",
+                    String.format("[Client] Error: Cannot open connection to Server ( %s , %d)",
                             serverInfo.getAddress(), serverInfo.getPort()), e);
         }
 
@@ -192,7 +185,7 @@ public class WordCount implements   Runnable{
         requestServiceMsg.setIdRequest(requestId);
         content = gson.toJson(requestServiceMsg);
 
-        System.out.format("Sending " + content + " to the Server (%s,%s, %d)\n",
+        System.out.format("[Client] Sending " + content + " to the Server (%s,%s, %d)\n",
                 serverInfo.getName(),serverInfo.getAddress(),serverInfo.getPort());
 
         try {
@@ -201,41 +194,50 @@ public class WordCount implements   Runnable{
             e.printStackTrace();
         }
 
-
         try {
             content = dataInputStream.readUTF();
         } catch (IOException e) {
             throw new RuntimeException(
-                    String.format("[Server] Error: Cannot read JSON from Server ( %s , %d)",
+                    String.format("[Client] Error: Cannot read JSON from Server ( %s , %d)",
                             serverInfo.getAddress(), serverInfo.getPort()), e);
         }
 
 
-        // Parseamos el mensaje a JSON
-        try {
-            jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
-        }catch (JsonSyntaxException e){
-            System.out.println("[Client] Error : incorrect message sent by Server");
-            System.out.println("[Client] Message: " + content);
+        System.out.println("[Client] Received from Server" + content);
 
-            return ;
-        }
+        RequestAnswerMsg requestAnswerMsg = gson.fromJson(content, RequestAnswerMsg.class);
 
-        System.out.println("[Client] " + jsonObjectMessage);
-
-        int status = jsonObjectMessage.get("status").getAsInt();
-
-        switch (status){
+        switch (requestAnswerMsg.getStatus()){
             case Constants.STATUS_SUCCESS_REQUEST:
+                sendArgsWordCountService(socket,dataInputStream,dataOutputStream);
                 break;
             case STATUS_ERROR_REQUEST:
-                // TODO: Falta
-                System.out.println("Errorrrrrrr");
-                return;
+                Util.mostrarErrorPrint(requestAnswerMsg.getCode());
+                mTryAgainRequest = true;
+                break;
         }
 
-        ServiceWordCountArgMsg serviceWordCountArgMsg;
+        try {
+            dataOutputStream.close();
+            dataInputStream.close();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
+    }
+
+    /**
+     * Una vez lograda la conexión con el servidor, le envía los argumentos al servidor para que realize el servicio
+     * @param socket
+     * @param dataInputStream
+     * @param dataOutputStream
+     */
+    private void sendArgsWordCountService(Socket socket,DataInputStream dataInputStream,DataOutputStream dataOutputStream) {
+
+        Gson gson = new Gson();
+        String content;
+        ServiceWordCountArgMsg serviceWordCountArgMsg;
 
         try (Stream<String> lines = Files.lines(Paths.get(this.fileP), StandardCharsets.UTF_8)) {
             for (String line : (Iterable<String>) lines::iterator){
@@ -281,25 +283,20 @@ public class WordCount implements   Runnable{
         ServiceWordCountAnswerMsg serviceWordCountAnswerMsg = gson.fromJson(content, ServiceWordCountAnswerMsg.class);
 
         System.out.format("File '%s' contains %d word(s).\n",this.fileP,serviceWordCountAnswerMsg.getWordcount());
-
-        try {
-            dataOutputStream.close();
-            dataInputStream.close();
-            socket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
     }
 
     @Override
     public void run() {
 
-
-        if(getRequestScheduler()){
-            sendRequestToServer();
+        mTryAgainRequest = true;
+        ntries = 0;
+        while(mTryAgainRequest && ntries <3) {
+            mTryAgainRequest = false;
+            if (getRequestScheduler() && StringUtils.isNotEmpty(requestId)) {
+                sendRequestToServer();
+            }
+            ntries ++;
         }
-
 
     }
 

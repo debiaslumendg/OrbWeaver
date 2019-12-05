@@ -2,8 +2,7 @@ package com.orbweaver.server;
 
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.orbweaver.commons.StatusSuccessMsg;
+import com.orbweaver.commons.RequestAnswerMsg;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -21,7 +20,7 @@ public class WordCountService implements ServiceInterfaz{
     }
 
     /**
-     * Atiende las peticion para ejecutar wordcount
+     * Atiende las peticion para ejecutar wordcount, lee los argumentos pasados por el cliente
      * @param dataInputStream
      * @param dataOutputStream
      */
@@ -30,19 +29,6 @@ public class WordCountService implements ServiceInterfaz{
         int nWords = 0;
         String content;
         Gson gson = new Gson();
-
-        StatusSuccessMsg statusSuccessMsg = new StatusSuccessMsg();
-        content = gson.toJson(statusSuccessMsg);
-
-        try {
-            dataOutputStream.writeUTF(content);
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
-                            socket.getInetAddress().getHostName(),socket.getPort())
-                    , e);
-        }
-
 
         boolean eof = false;
         while(!eof){

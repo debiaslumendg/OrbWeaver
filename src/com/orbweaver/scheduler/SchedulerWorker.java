@@ -91,7 +91,7 @@ public class SchedulerWorker implements Runnable {
             return ;
         }
 
-        System.out.println("[Scheduler] " + jsonObjectMessage);
+        System.out.println("[Scheduler] Received " + jsonObjectMessage);
 
         // Obtenemos el código, esto nos dice de qué va el mensaje.
         int code = jsonObjectMessage.get("code").getAsInt();
@@ -115,11 +115,19 @@ public class SchedulerWorker implements Runnable {
                 // Cliente quiere ejecutar un servicio
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
 
-                RequestServiceAnswerSuccessMsg requestServiceAnswerSuccessMsg = scheduler.createRequestService(requestServiceMsg.getName());
+                RequestServiceAnswerMsg requestServiceAnswerMsg = scheduler.createRequestService(requestServiceMsg.getName());
 
-                content = gson.toJson(requestServiceAnswerSuccessMsg);
+                content = gson.toJson(requestServiceAnswerMsg);
 
                 break;
+            case Constants.CODE_REQUEST_UPDATE_REQUEST:
+                // Servidor quiere actualizar el estado de una request
+                RequestUpdateRequestToScheduler requestValidate = gson.fromJson(content, RequestUpdateRequestToScheduler.class);
+
+                RequestAnswerMsg answer = this.scheduler.validateIDrequest(requestValidate);
+
+                content = gson.toJson(answer);
+
         }
 
         try {
@@ -142,4 +150,5 @@ public class SchedulerWorker implements Runnable {
             e.printStackTrace();
         }
     }
+
 }

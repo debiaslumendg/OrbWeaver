@@ -1,9 +1,6 @@
 package com.orbweaver.scheduler;
 
-import com.orbweaver.commons.Constants;
-import com.orbweaver.commons.RequestServiceAnswerSuccessMsg;
-import com.orbweaver.commons.ServerInfo;
-import com.orbweaver.commons.ServiceInfo;
+import com.orbweaver.commons.*;
 import com.orbweaver.scheduler.tables.RequestServer;
 import com.orbweaver.server.Server;
 
@@ -13,6 +10,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.UUID;
+
+import static com.orbweaver.commons.Constants.*;
 
 /**
  *
@@ -180,14 +179,23 @@ public class Scheduler implements Runnable{
 	 * @param serviceName Nombre único del servicio
 	 * @return clase request
 	 */
-	public RequestServiceAnswerSuccessMsg createRequestService(String serviceName) {
+	public RequestServiceAnswerMsg createRequestService(String serviceName) {
 
-		ArrayList<ServerInfo> serversServices = ordServersByLoad(parentServer.getAllServersByServiceName(serviceName));
+		RequestServiceAnswerMsg requestServiceAnswerMsg = new RequestServiceAnswerMsg();
 
-		ServerInfo server = serversServices.get(0); // El que tenga menor carga
-		RequestServer requestServer = new RequestServer(UUID.randomUUID().toString(), server.getId());
-		requests.add(requestServer);
-		return new RequestServiceAnswerSuccessMsg(server,requestServer.getId());
+		ArrayList<ServerInfo> allServersService = parentServer.getAllServersByServiceName(serviceName);
+		if( allServersService.size() > 0) {
+			ArrayList<ServerInfo> serversServices = ordServersByLoad(allServersService);
+			ServerInfo server = serversServices.get(0); // El que tenga menor carga
+			RequestServer requestServer = new RequestServer(UUID.randomUUID().toString(), server.getId());
+			requests.add(requestServer);
+			requestServiceAnswerMsg.setServerInfo(server);
+			requestServiceAnswerMsg.setRequestId(requestServer.getId());
+		}else{
+			requestServiceAnswerMsg.setStatus(STATUS_ERROR_REQUEST);
+			requestServiceAnswerMsg.setCode(CODE_ERROR_SOLICITED_SERVICE_NOT_SERVER_FOUND);
+		}
+		return requestServiceAnswerMsg;
 	}
 
 	/**
@@ -256,5 +264,47 @@ public class Scheduler implements Runnable{
 			}
 		}
 		return load;
+	}
+
+	/**
+	 * Esta funcion se encarga de decir si la request que fue pasada como argumento (lrecibida por el scheduler del servidor) -
+	 * -es una request valida
+	 * @param request
+	 * @return
+	 */
+	public RequestAnswerMsg validateIDrequest(RequestUpdateRequestToScheduler request) {
+		RequestAnswerMsg answer = new RequestAnswerMsg();
+
+		RequestServer r = getRequestByID(request.getRequest_id());
+		if(r != null){
+			if(r.getIdServer() == request.getServer_id()){
+				RequestServer.StatusRequest newStatus = request.getNew_status();
+				if(newStatus == RequestServer.StatusRequest.RUNNING &&
+						(r.getStatus() == RequestServer.StatusRequest.DONE ||
+								r.getStatus() == RequestServer.StatusRequest.RUNNING)) {
+					answer.setStatus(STATUS_ERROR_REQUEST);
+					answer.setCode(CODE_ERROR_INVALID_REQUEST_DUPLICATED);
+				}else{
+					answer.setStatus(STATUS_SUCCESS_REQUEST);
+					r.setStatus(request.getNew_status());
+				}
+			}else{
+				answer.setStatus(STATUS_ERROR_REQUEST);
+				answer.setCode(CODE_ERROR_INVALID_REQUEST_UNAUTHORIZED_EXEC);
+			}
+		}else {
+			answer.setStatus(STATUS_ERROR_REQUEST);
+			answer.setCode(CODE_ERROR_INVALID_REQUEST_ID_NOT_FOUND);
+		}
+		return answer;
+	}
+
+	private RequestServer getRequestByID(String request_id) {
+		for(RequestServer r: requests){
+			if(r.getId().equals(request_id)){
+				return r;
+			}
+		}
+		return null;
 	}
 }

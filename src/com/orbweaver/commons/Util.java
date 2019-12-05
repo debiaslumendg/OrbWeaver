@@ -7,6 +7,8 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import static com.orbweaver.commons.Constants.*;
+
 public class Util {
 
     public static String getArgValue(String[] args,String name){
@@ -108,5 +110,34 @@ public class Util {
         return sb.toString();
     }
 
+    public static void mostrarErrorPrint(int code) {
+        System.out.println("** OrbWeaver -- ERROR**");
+        switch (code){
+            /** Código de error que indica que la request a validar por el scheduler tiene un id que no existe*/
+            case CODE_ERROR_INVALID_REQUEST_ID_NOT_FOUND:
+                System.out.println("Error request not found");
+                break;
+
+            /** Codigo de error que indica que la request a validar por el servidor B, no debería estar siendo ejecutada por él*/
+            case CODE_ERROR_INVALID_REQUEST_UNAUTHORIZED_EXEC:
+                System.out.println("Error Server unauthorized");
+                break;
+
+            /** Codigo de error que indica que la request a validar por el scheduler es simplemente inválida, sin más detalle*/
+            case CODE_ERROR_INVALID_REQUEST:
+                System.out.println("Error invalid request");
+                break;
+
+            /** Codigo de error que indica que la request ya esta siendo ejecutada o ya fue cumplida*/
+            case CODE_ERROR_INVALID_REQUEST_DUPLICATED:
+                System.out.println("Error duplicated request");
+                break;
+            /** El servicio solictado no fue encontrado en ningun server*/
+            case CODE_ERROR_SOLICITED_SERVICE_NOT_SERVER_FOUND:
+                System.out.println("Not server running with solicited service found");
+                System.out.println("Try again later!");
+                break;
+        }
+    }
 }
 

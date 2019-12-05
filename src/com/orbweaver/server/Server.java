@@ -54,6 +54,13 @@ public class Server {
         iAmScheduler = isCheduler;
     }
 
+    public String geteCoordinatorAddress(){
+        return this.coordinatorAddress;
+    }
+    public int getCoordinatorPort(){
+        return this.coordinatorPort;
+    }
+
     /**
      * Este metodo se encarga de comunicarse con el Scheduler y decirle que lo agregue al grupo.
      */
@@ -138,8 +145,6 @@ public class Server {
             case Constants.STATUS_SUCCESS_REQUEST:
                 RequestAddServerAnswerMsg requestAddServerAnswerMsg = gson.fromJson(content, RequestAddServerAnswerMsg.class);
                 System.out.println("[Server] Got from Scheduler: ");
-                services = requestAddServerAnswerMsg.getServices();
-                System.out.println("[Server] \tServices: " + services);
                 servers = requestAddServerAnswerMsg.getServers();
                 System.out.println("[Server] \tServers: " + servers);
 
@@ -168,15 +173,6 @@ public class Server {
         return services;
     }
 
-    private int getServiceIDByName(String name){
-        for(ServiceInfo serviceInfo : services){
-            if(serviceInfo.getName().equals(name)) {
-                return serviceInfo.getId();
-            }
-        }
-
-        return -1;
-    }
 
     private ServerInfo getServerByID(int id){
         for(ServerInfo serverInfo : servers){
@@ -263,26 +259,11 @@ public class Server {
         // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
         int newServerID;
         if(iAmScheduler) {
+            // TODO : Cambiar la forma en que se maneja la creacion de ids de los servidores
             newServerID = servers.get(servers.size() - 1).getId() + 1;
             serverInfo.setId(newServerID);
         }else{
             newServerID = serverInfo.getId();
-        }
-
-        for(ServiceInfo serviceInfo : serverInfo.getServices()){
-
-            int newServiceID = getServiceIDByName(serviceInfo.getName());
-
-            if(newServiceID == -1) {
-                if(iAmScheduler) {
-                    newServiceID = services.get(services.size() - 1).getId() + 1;
-                }
-                services.add(serviceInfo);
-            }
-
-            if(iAmScheduler) {
-                serviceInfo.setId(newServiceID);
-            }
         }
 
         if(iAmScheduler) {
@@ -313,9 +294,6 @@ public class Server {
         }else{
             // Si este servidor funcionará como Scheduler establecemos nuestro estado inicial
             myServerInfo.setId(0);
-            for(int i = 0 ; i < services.size() ; i++){
-                services.get(i).setId(i);
-            }
 
             // Iniciamos el scheduler
             new Thread(new Scheduler(this,schedulerPort)).start();
@@ -480,5 +458,9 @@ public class Server {
             return wordCountService;
         }
         return null;
+    }
+
+    public int getId() {
+        return this.myId;
     }
 }

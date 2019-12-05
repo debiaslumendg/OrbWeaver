@@ -8,9 +8,9 @@ import static com.orbweaver.commons.Constants.STATUS_SUCCESS_REQUEST;
 public class RequestServiceAnswerMsg {
 
     private int status = STATUS_SUCCESS_REQUEST; // Nombre del servicio a pedir
+    private int code; // Código de error en caso status = ERROR
     private ServerInfo server_info;
     private String request_id;
-    private int code;
 
     public RequestServiceAnswerMsg() {
     }

@@ -5,7 +5,7 @@ package com.orbweaver.commons;
  */
 public class RequestAnswerMsg {
     private int status = Constants.STATUS_SUCCESS_REQUEST; // Nombre del servicio a pedir
-    private int code = -1 ;
+    private int code = -1 ; // Codigo de error
 
     public int getCode() {
         return code;

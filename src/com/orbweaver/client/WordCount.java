@@ -154,12 +154,8 @@ public class WordCount implements   OnServiceArgumentsToServer{
                 OnServiceArgumentsToServer wordcount = new WordCount(fpath);
                 Client client = new Client("wordcount",portScheduler,schedulerAddress);
                 client.setOnServiceArgumentsToServer(wordcount);
-                client.run();
                 new Thread(client).start();
             }
-
         }
-
-
     }
 }

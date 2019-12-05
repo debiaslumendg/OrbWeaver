@@ -20,6 +20,10 @@ public class Constants {
     /** Codigo que indica que el mensaje recibido por el Scheduler es para actualiazr el estado de una request */
     public static final int CODE_REQUEST_UPDATE_REQUEST = 3;
 
+    /** Codigo que indica que el mensaje recibido por el Servidor es para crear una nueva request -- en su lista
+     * (aunque no es el scheduler, es por si tiene que ser el scheduler más adelante)*/
+    public static final int CODE_REQUEST_NEW_REQUEST = 4;
+
     /** Codigo que indica el estado EXITOSO de la respuesta de un mensaje del Scheduler*/
     public static final int STATUS_SUCCESS_REQUEST = 2;
 

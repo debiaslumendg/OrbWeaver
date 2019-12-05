@@ -3,20 +3,14 @@ package com.orbweaver.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
 import com.orbweaver.commons.*;
-import com.orbweaver.scheduler.Scheduler;
-import org.apache.http.conn.util.InetAddressUtils;
-import org.apache.commons.lang3.StringUtils;
+import com.orbweaver.server.scheduler.Scheduler;
 
 import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Scanner;
-
-import static com.orbweaver.commons.Util.*;
 
 public class Server {
 
@@ -33,6 +27,13 @@ public class Server {
     private int schedulerPort           = Constants.DEFAULT_SCHEDULER_PORT;
 
     private ArrayList<ServerInfo> servers = new ArrayList<>();
+
+    /**Lista de requests que está manejando el Scheduler
+     * Como todos los servidores son a su vez un backup para el scheduler
+     * Esta lista de request debe ser actualizada en todos los servidores
+     * */
+    private ArrayList<RequestInfo> requests = new ArrayList<>() ;
+
     private ServerInfo myServerInfo;
 
     private boolean      isStopped      = false;
@@ -201,24 +202,21 @@ public class Server {
     }
 
     /**
-     * Envia un mensaje al grupo informandoles del recien llegado
-     * TODO: Hacer ordenamiento de los mensajes agregar / eliminar servidor
-     * @param newServerInfo
+     * Envia un mensaje al grupo
+     * - Nuevo servidor
+     * - Request actualizado
+     * TODO: Hacer ordenamiento de los mensajes , agregar / eliminar servidor/etc
      */
-    private void sendUpdateNewServer(ServerInfo newServerInfo) {
-
-        Gson gson = new Gson();
-
-        RequestAddServerMsg requestAddServerMsg = new RequestAddServerMsg(newServerInfo);
-        String json = gson.toJson(requestAddServerMsg);
+    public void sendMessageToGroup(String message) {
 
         for(ServerInfo serverInfo : servers) {
             if(serverInfo.getId() != myServerInfo.getId()) {
-                sendJsonToServer(json, serverInfo);
+                sendJsonToServer(message, serverInfo);
             }
         }
 
     }
+
 
     /**
      * Agrega un servidor a su lista de miembros.
@@ -230,13 +228,15 @@ public class Server {
      *          * Ocurre un error y el scheduler y el scheduler back up mueren, cualquier puede tomar el lugar de scheduler.
      *              Por lo que necesita la lista de miembros para seleccionar entre ellos el nuevo scheduler.
      *
-     * @param serverInfo Informacion del nuevo servidor a agregar
+     * @param requestAddServerMsg Informacion del nuevo servidor a agregar
      * @return ID del nuevo servidor
      */
-    public synchronized int addServer(ServerInfo serverInfo){
+    public synchronized int addServer(RequestAddServerMsg requestAddServerMsg){
 
         // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
         int newServerID;
+        ServerInfo serverInfo = requestAddServerMsg.getServer();
+
         if(iAmScheduler) {
             // TODO : Cambiar la forma en que se maneja la creacion de ids de los servidores
             newServerID = servers.get(servers.size() - 1).getId() + 1;
@@ -246,7 +246,7 @@ public class Server {
         }
 
         if(iAmScheduler) {
-            sendUpdateNewServer(serverInfo);
+            sendMessageToGroup(new Gson().toJson(requestAddServerMsg));
         }
 
         servers.add(serverInfo);
@@ -365,7 +365,20 @@ public class Server {
         return this.myId;
     }
 
+    public RequestInfo getRequestByID(String request_id) {
+        for(RequestInfo r: requests){
+            if(r.getId().equals(request_id)){
+                return r;
+            }
+        }
+        return null;
+    }
+
     public void setOnRequestServiceToClient(OnRequestServiceToClient onRequestServiceToClient) {
         this.onRequestServiceToClient = onRequestServiceToClient;
+    }
+
+    public ArrayList<RequestInfo> getRequests() {
+        return  requests;
     }
 }

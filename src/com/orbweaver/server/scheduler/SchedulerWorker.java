@@ -1,7 +1,8 @@
-package com.orbweaver.scheduler;
+package com.orbweaver.server.scheduler;
 
 import com.google.gson.*;
 import com.orbweaver.commons.*;
+import com.orbweaver.server.RequestInfo;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -100,7 +101,7 @@ public class SchedulerWorker implements Runnable {
             case Constants.CODE_REQUEST_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
 
-                int newServerID = scheduler.addServer(requestAddServerMsg.getServer());
+                int newServerID = scheduler.addServer(requestAddServerMsg);
 
                 RequestAddServerAnswerMsg requestAddServerAnswerMsg = new RequestAddServerAnswerMsg(
                         newServerID,
@@ -116,14 +117,21 @@ public class SchedulerWorker implements Runnable {
 
                 RequestServiceAnswerMsg requestServiceAnswerMsg = scheduler.createRequestService(requestServiceMsg.getName());
 
+                if(requestServiceAnswerMsg.getStatus() == Constants.STATUS_SUCCESS_REQUEST){
+                    // Si la request se creo correctamente actualizamos todos los servidores creandole la request
+                    RequestInfo requestInfo = this.scheduler.getRequestByID(requestServiceAnswerMsg.getRequestId());
+                    RequestNewRequestMsg requestNewRequestMsg = new RequestNewRequestMsg(requestInfo);
+                    this.scheduler.sendMessageToGroup(new Gson().toJson(requestNewRequestMsg));
+                }
+
                 content = gson.toJson(requestServiceAnswerMsg);
 
                 break;
             case Constants.CODE_REQUEST_UPDATE_REQUEST:
                 // Servidor quiere actualizar el estado de una request
-                RequestUpdateRequestToScheduler requestValidate = gson.fromJson(content, RequestUpdateRequestToScheduler.class);
+                RequestUpdateRequestMsg requestUpdate = gson.fromJson(content, RequestUpdateRequestMsg.class);
 
-                RequestAnswerMsg answer = this.scheduler.validateIDrequest(requestValidate);
+                RequestAnswerMsg answer = this.scheduler.updateRequest(requestUpdate);
 
                 content = gson.toJson(answer);
 

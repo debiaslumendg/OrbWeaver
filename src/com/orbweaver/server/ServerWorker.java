@@ -2,12 +2,10 @@ package com.orbweaver.server;
 
 import com.google.gson.*;
 import com.orbweaver.commons.*;
-import com.orbweaver.scheduler.tables.RequestServer;
 
 import java.io.*;
 import java.net.Socket;
 
-import static com.orbweaver.commons.Constants.STATUS_ERROR_REQUEST;
 import static com.orbweaver.commons.Constants.STATUS_SUCCESS_REQUEST;
 
 public class ServerWorker implements Runnable{
@@ -69,16 +67,33 @@ public class ServerWorker implements Runnable{
             case Constants.CODE_REQUEST_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
 
-                server.addServer(requestAddServerMsg.getServer());
+                server.addServer(requestAddServerMsg);
 
+                break;
+
+            case Constants.CODE_REQUEST_NEW_REQUEST:
+                RequestNewRequestMsg newRequestMsg = gson.fromJson(content, RequestNewRequestMsg.class);
+
+                this.server.getRequests().add(newRequestMsg.getRequest_info());
+                break;
+
+            case Constants.CODE_REQUEST_UPDATE_REQUEST:
+                // Actualización de una request modo actualizar backup
+                RequestUpdateRequestMsg requestUpdate = gson.fromJson(content, RequestUpdateRequestMsg.class);
+
+                RequestInfo request = this.server.getRequestByID(requestUpdate.getRequest_id());
+                request.setStatus(requestUpdate.getNew_status());
                 break;
             case Constants.CODE_REQUEST_EXEC_SERVICE:
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
 
+                RequestInfo myrequest = this.server.getRequestByID(requestServiceMsg.getIdRequest());
                 RequestAnswerMsg validateRequestAnswer = updateStatusRequestScheduler(
                         requestServiceMsg.getIdRequest(),
-                        RequestServer.StatusRequest.RUNNING
+                        RequestInfo.StatusRequest.RUNNING
                 );
+
+                myrequest.setStatus(RequestInfo.StatusRequest.RUNNING);
 
                 // Enviamos el mensaje de respuesta -- errror -success
                 content = gson.toJson(validateRequestAnswer);
@@ -96,19 +111,17 @@ public class ServerWorker implements Runnable{
                     ServiceInterfaz service = server.getServiceExec(requestServiceMsg.getName());
                     service.handleClient(clientSocket, dataInputStream, dataOutputStream);
 
-                    updateStatusRequestScheduler(requestServiceMsg.getIdRequest(), RequestServer.StatusRequest.DONE);
+                    updateStatusRequestScheduler(requestServiceMsg.getIdRequest(), RequestInfo.StatusRequest.DONE);
+                    myrequest.setStatus(RequestInfo.StatusRequest.DONE);
                 }
                 break;
-        }
 
-        //long time = System.currentTimeMillis();
-        //System.out.println("Request processed: " + time);
+        }
 
         try{
             dataInputStream.close();
             dataOutputStream.close();
         } catch (IOException e) {
-            //report exception somewhere.
             e.printStackTrace();
         }
     }
@@ -121,7 +134,7 @@ public class ServerWorker implements Runnable{
      *  Sino:
      *  - Si la request es válida , establece el servidor como ejecutandola
      */
-    private RequestAnswerMsg updateStatusRequestScheduler(String idRequest, RequestServer.StatusRequest newStatus) {
+    private RequestAnswerMsg updateStatusRequestScheduler(String idRequest, RequestInfo.StatusRequest newStatus) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Socket socket;
 
@@ -149,13 +162,13 @@ public class ServerWorker implements Runnable{
                             this.server.geteCoordinatorAddress(), this.server.getCoordinatorPort()), e);
         }
 
-        RequestUpdateRequestToScheduler requestUpdateRequestToScheduler = new RequestUpdateRequestToScheduler(
+        RequestUpdateRequestMsg requestUpdateRequestMsg = new RequestUpdateRequestMsg(
                 this.server.getId(),
                 idRequest,
                 newStatus
         );
-        content = gson.toJson(requestUpdateRequestToScheduler);
-        System.out.println("[Server] Sending to Scheduler to Validate: " + content);
+        content = gson.toJson(requestUpdateRequestMsg);
+        System.out.println("[Server] Updating request to Scheduler : " + content);
 
         try {
             dataOutputStream.writeUTF(content);
@@ -174,7 +187,7 @@ public class ServerWorker implements Runnable{
                             this.server.geteCoordinatorAddress(), this.server.getCoordinatorPort()), e);
         }
 
-        System.out.println("[Server] Received from Scheduler Validation: " + content);
+        System.out.println("[Server] Updating request to Scheduler answer : " + content);
         RequestAnswerMsg answer = gson.fromJson(content, RequestAnswerMsg.class);
 
         try{

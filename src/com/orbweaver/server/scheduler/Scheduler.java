@@ -1,7 +1,8 @@
-package com.orbweaver.scheduler;
+package com.orbweaver.server.scheduler;
 
+import com.google.gson.Gson;
 import com.orbweaver.commons.*;
-import com.orbweaver.scheduler.tables.RequestServer;
+import com.orbweaver.server.RequestInfo;
 import com.orbweaver.server.Server;
 
 import java.io.IOException;
@@ -43,9 +44,6 @@ public class Scheduler implements Runnable{
 
 	/**Apuntador al Servidor que inició el hilo*/
     private Server parentServer = null;
-
-    /**Lista de requests que está manejando el Scheduler*/
-	private ArrayList<RequestServer> requests = new ArrayList<>() ;
 
 	/**
 	 * Crea una instancia del Scheduler
@@ -151,7 +149,7 @@ public class Scheduler implements Runnable{
 	 * @param server Objeto conteniendo información del nuevo servidor
 	 * @return ID del nuevo servidor
 	 */
-	public int addServer(ServerInfo server) {
+	public int addServer(RequestAddServerMsg server) {
 		return parentServer.addServer(server);
 	}
 
@@ -175,17 +173,36 @@ public class Scheduler implements Runnable{
 
 		ArrayList<ServerInfo> allServersService = parentServer.getAllServersByServiceName(serviceName);
 		if( allServersService.size() > 0) {
+
 			ArrayList<ServerInfo> serversServices = ordServersByLoad(allServersService);
 			ServerInfo server = serversServices.get(0); // El que tenga menor carga
-			RequestServer requestServer = new RequestServer(UUID.randomUUID().toString(), server.getId());
-			requests.add(requestServer);
+
+			RequestInfo requestInfo = new RequestInfo(UUID.randomUUID().toString(), server.getId());
+			this.parentServer.getRequests().add(requestInfo);
+
 			requestServiceAnswerMsg.setServerInfo(server);
-			requestServiceAnswerMsg.setRequestId(requestServer.getId());
+			requestServiceAnswerMsg.setRequestId(requestInfo.getId());
 		}else{
 			requestServiceAnswerMsg.setStatus(STATUS_ERROR_REQUEST);
 			requestServiceAnswerMsg.setCode(CODE_ERROR_SOLICITED_SERVICE_NOT_SERVER_FOUND);
 		}
 		return requestServiceAnswerMsg;
+	}
+
+	/**
+	 * Obtiene el numero de request que un servidor está ejecutando (o se tiene planeado que ejecute)
+	 * @param idServer ID del servidor
+	 * @return numero de request asociadas al servidor
+	 */
+	public int getLoadForServerByID(int idServer) {
+
+		int load = 0;
+		for(RequestInfo requestInfo : this.parentServer.getRequests()){
+			if(requestInfo.getId_server() == idServer){
+				load ++;
+			}
+		}
+		return load;
 	}
 
 	/**
@@ -240,21 +257,6 @@ public class Scheduler implements Runnable{
 		return servers;
 	}
 
-	/**
-	 * Obtiene el numero de request que un servidor está ejecutando (o se tiene planeado que ejecute)
-	 * @param idServer ID del servidor
-	 * @return numero de request asociadas al servidor
-	 */
-	private int getLoadForServerByID(int idServer) {
-
-		int load = 0;
-		for(RequestServer requestServer : requests){
-			if(requestServer.getIdServer() == idServer){
-				load ++;
-			}
-		}
-		return load;
-	}
 
 	/**
 	 * Esta funcion se encarga de decir si la request que fue pasada como argumento (lrecibida por el scheduler del servidor) -
@@ -262,21 +264,23 @@ public class Scheduler implements Runnable{
 	 * @param request
 	 * @return
 	 */
-	public RequestAnswerMsg validateIDrequest(RequestUpdateRequestToScheduler request) {
+	public RequestAnswerMsg updateRequest(RequestUpdateRequestMsg request) {
 		RequestAnswerMsg answer = new RequestAnswerMsg();
 
-		RequestServer r = getRequestByID(request.getRequest_id());
+		RequestInfo r = this.parentServer.getRequestByID(request.getRequest_id());
 		if(r != null){
-			if(r.getIdServer() == request.getServer_id()){
-				RequestServer.StatusRequest newStatus = request.getNew_status();
-				if(newStatus == RequestServer.StatusRequest.RUNNING &&
-						(r.getStatus() == RequestServer.StatusRequest.DONE ||
-								r.getStatus() == RequestServer.StatusRequest.RUNNING)) {
+			if(r.getId_server() == request.getServer_id()){
+				RequestInfo.StatusRequest newStatus = request.getNew_status();
+				if(newStatus == RequestInfo.StatusRequest.RUNNING &&
+						(r.getStatus() == RequestInfo.StatusRequest.DONE ||
+								r.getStatus() == RequestInfo.StatusRequest.RUNNING)) {
 					answer.setStatus(STATUS_ERROR_REQUEST);
 					answer.setCode(CODE_ERROR_INVALID_REQUEST_DUPLICATED);
 				}else{
 					answer.setStatus(STATUS_SUCCESS_REQUEST);
 					r.setStatus(request.getNew_status());
+
+					sendMessageToGroup(new Gson().toJson(request));
 				}
 			}else{
 				answer.setStatus(STATUS_ERROR_REQUEST);
@@ -289,12 +293,12 @@ public class Scheduler implements Runnable{
 		return answer;
 	}
 
-	private RequestServer getRequestByID(String request_id) {
-		for(RequestServer r: requests){
-			if(r.getId().equals(request_id)){
-				return r;
-			}
-		}
-		return null;
+	public void sendMessageToGroup(String message) {
+		System.out.println("[Scheduler] sending " + message + " to group!" );
+		this.parentServer.sendMessageToGroup(message);
+	}
+
+	public RequestInfo getRequestByID(String requestId) {
+		return this.parentServer.getRequestByID(requestId);
 	}
 }

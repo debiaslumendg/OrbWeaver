@@ -1,17 +1,13 @@
-package com.orbweaver.scheduler.tables;
+package com.orbweaver.server;
 
 /**
  * Representa una request de un servicio por parte de un cliente.
  *
  *
  */
-public class RequestServer {
+public class RequestInfo {
     /**
      * Se supone este ID debe ser único entre  todas las request estre todos los schedulers.
-     *
-     * TODO: Hacer caso donde un cliente intenta ejecutar un id que existía en un scheduler que se cayó y el id existe
-     *      en el nuevo scheduler pero fue generado para otro cliente. Agregar marca única de scheduler?
-     *      O utilizar UUID ?
      *
      */
     private String id;
@@ -19,7 +15,7 @@ public class RequestServer {
     /**
      * ID del servidor que ejecutará(o ejecuta) el request
      */
-    private int idServer;
+    private int id_server;
 
     public StatusRequest getStatus() {
         return status;
@@ -48,17 +44,17 @@ public class RequestServer {
      */
     private StatusRequest status = StatusRequest.WAITING_FOR_SERVER_EXEC;
 
-    public int getIdServer() {
-        return idServer;
+    public int getId_server() {
+        return id_server;
     }
 
-    public void setIdServer(int idServer) {
-        this.idServer = idServer;
+    public void setId_server(int id_server) {
+        this.id_server = id_server;
     }
 
-    public RequestServer(String id, int idServer){
+    public RequestInfo(String id, int id_server){
 
         this.id = id;
-        this.idServer = idServer;
+        this.id_server = id_server;
     }
 }

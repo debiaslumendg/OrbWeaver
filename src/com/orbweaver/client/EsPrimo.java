@@ -36,7 +36,7 @@ public class EsPrimo implements OnServiceArgumentsToServer {
         Gson gson = new Gson();
         String content;
 
-        content = String.format("{n:%d}",ncheck);
+        content = String.format("{\"n\":%d}",ncheck);
 
         try {
             dataOutputStream.writeUTF(content);
@@ -54,10 +54,8 @@ public class EsPrimo implements OnServiceArgumentsToServer {
                             socket.getInetAddress().getHostName(),socket.getPort()), e);
         }
 
-        JsonObject jsonObjectMessage;
         // Parseamos el mensaje a JSON
-
-        jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
+        JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
 
         System.out.println("[Server] " + jsonObjectMessage);
 
@@ -110,7 +108,7 @@ public class EsPrimo implements OnServiceArgumentsToServer {
         }else{
             OnServiceArgumentsToServer esPrimo = new EsPrimo(ntocheck);
 
-            Client client = new Client("esprimo",portScheduler,schedulerAddress);
+            Client client = new Client("isprime",portScheduler,schedulerAddress);
             client.setOnServiceArgumentsToServer(esPrimo);
             client.run();
 

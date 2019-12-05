@@ -157,16 +157,6 @@ public class Scheduler implements Runnable{
 
 
 	/**
-	 * Obtiene todos los servicios actuales que tiene el Servidor.
-	 * NO SON los servicios que ofrece el servidor sino los del grupo completo que él tiene, que deberían ser los actuales
-	 * porque cuando se agrega un servidor al grupo se envía en su información sus servicios ofrecidos.
-	 * @return
-	 */
-	public ArrayList<ServiceInfo> getServices() {
-		return parentServer.getServices();
-	}
-
-	/**
 	 * Lista de servidores en el grupo. Actualizada cuando se agrega un servidor al grupo.
 	 * @return servidores en el grupo
 	 */

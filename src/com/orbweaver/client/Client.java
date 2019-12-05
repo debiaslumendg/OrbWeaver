@@ -163,7 +163,7 @@ public class Client implements Runnable {
         }
 
 
-        RequestServiceMsg requestServiceMsg = new RequestServiceMsg("wordcount");
+        RequestServiceMsg requestServiceMsg = new RequestServiceMsg(serviceName);
         requestServiceMsg.setIdRequest(requestId);
         content = gson.toJson(requestServiceMsg);
 

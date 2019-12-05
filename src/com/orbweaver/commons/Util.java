@@ -1,11 +1,14 @@
 package com.orbweaver.commons;
 
+import org.apache.http.conn.util.InetAddressUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Scanner;
 
 import static com.orbweaver.commons.Constants.*;
 
@@ -139,5 +142,33 @@ public class Util {
                 break;
         }
     }
+
+    /**
+     * En caso de que los argumentos no hayan sido provistos como argumentos
+     * Le pregunta al usuario la dirección y puerto del coordinador
+     * @param portCoordinator
+     * @return
+     */
+    public static String[] askUserSchedulerAddress(int portCoordinator) {
+
+        String[] values = new String[]{"", String.valueOf(portCoordinator)};
+        Scanner scanner = new Scanner(System. in);
+
+        System.out.println("Please, Insert the Scheduler address");
+
+        System.out.print("Address : ");
+        values[0] = scanner. nextLine();
+
+        while ( !InetAddressUtils.isIPv4Address(values[0])) {
+            System.out.println("Address not valid");
+
+            System.out.print("Address : ");
+            values[0] = scanner. nextLine();
+        }
+
+
+        return values;
+    }
+
 }
 

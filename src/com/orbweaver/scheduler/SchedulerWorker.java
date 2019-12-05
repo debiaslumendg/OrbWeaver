@@ -104,7 +104,6 @@ public class SchedulerWorker implements Runnable {
 
                 RequestAddServerAnswerMsg requestAddServerAnswerMsg = new RequestAddServerAnswerMsg(
                         newServerID,
-                        scheduler.getServices(),
                         scheduler.getServers()
                 );
 

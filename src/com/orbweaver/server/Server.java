@@ -26,19 +26,19 @@ public class Server {
 
     private boolean iAmScheduler = false;
 
-    private WordCountService wordCountService = new WordCountService();
 
     private String coordinatorAddress     = "";
     private int coordinatorPort               = Constants.DEFAULT_SCHEDULER_PORT;;
 
     private int schedulerPort           = Constants.DEFAULT_SCHEDULER_PORT;
 
-    private ArrayList<ServiceInfo> services = new ArrayList<ServiceInfo>();
     private ArrayList<ServerInfo> servers = new ArrayList<>();
     private ServerInfo myServerInfo;
 
     private boolean      isStopped      = false;
     private int myId;
+
+    private OnRequestServiceToClient onRequestServiceToClient;
 
     public Server(int serverPort,String coordinatorAddress, int coordinatorPort,int schedulerPort,boolean isCheduler){
         this.serverPort = serverPort;
@@ -46,12 +46,8 @@ public class Server {
         this.coordinatorPort = coordinatorPort;
         this.schedulerPort = schedulerPort;
 
-        services.add(new ServiceInfo("wordcount"));
-
-        myServerInfo = new ServerInfo("manuggz","127.0.0.1",this.serverPort, services);
-
-        servers.add(myServerInfo);
         iAmScheduler = isCheduler;
+
     }
 
     public String geteCoordinatorAddress(){
@@ -76,8 +72,7 @@ public class Server {
             // TODO: Puede time out
             throw new RuntimeException(
                     String.format("[Server] Error: Cannot connect to Scheduler ( %s , %d)",
-                            this.coordinatorAddress,this.coordinatorPort)
-                    , e);
+                            this.coordinatorAddress,this.coordinatorPort), e);
         }
 
 
@@ -112,9 +107,7 @@ public class Server {
                     , e);
         }
 
-
         try {
-
             // Obtenemos el contenido del mensaje del scheduler
             content = dataInputStream.readUTF();
         } catch (IOException e) {
@@ -125,17 +118,7 @@ public class Server {
         }
 
         // Parseamos el mensaje a JSON
-        try {
-            jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
-        }catch (JsonSyntaxException e){
-            System.out.println("Error : incorrect message sent by Scheduler");
-            System.out.println("Message: " + content);
-            throw new RuntimeException(
-                    String.format("Error: incorrect message sent by Scheduler ( %s , %d)",
-                            this.coordinatorAddress,this.coordinatorPort)
-                    , e);
-
-        }
+        jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
 
         System.out.println(jsonObjectMessage);
 
@@ -167,10 +150,6 @@ public class Server {
             e.printStackTrace();
         }
 
-    }
-
-    public ArrayList<ServiceInfo> getServices(){
-        return services;
     }
 
 
@@ -288,6 +267,10 @@ public class Server {
 
     public void run(){
 
+        myServerInfo = new ServerInfo("manuggz","127.0.0.1",this.serverPort, onRequestServiceToClient.getServicesList());
+
+        servers.add(myServerInfo);
+
         if(!iAmScheduler) {
             // Si este servidor NO funcionará como Scheduler entonces pedimos que se nos agregue al grupo de servidores
             addServerToGroup();
@@ -348,89 +331,6 @@ public class Server {
         }
     }
 
-    /**
-     * En caso de que los argumentos no hayan sido provistos como argumentos
-     * Le pregunta al usuario la dirección y puerto del coordinador
-     * @param portCoordinator
-     * @return
-     */
-    private static String[] askUserSchedulerAddress(int portCoordinator) {
-
-        String[] values = new String[]{"", String.valueOf(portCoordinator)};
-        Scanner scanner = new Scanner(System. in);
-
-        System.out.println("Please, Insert the Scheduler address");
-
-        System.out.print("Address : ");
-        values[0] = scanner. nextLine();
-
-        while ( !InetAddressUtils.isIPv4Address(values[0])) {
-            System.out.println("Address not valid");
-
-            System.out.print("Address : ");
-            values[0] = scanner. nextLine();
-        }
-
-
-        return values;
-    }
-
-
-    /**
-     * Usage
-     *  $> server [--port|-p <number>] <--hostc|-h <address> | <--as-scheduler | --sh> >  [--portc|-pc <number>]  [--ports|-ps <NUMBER>]
-     *
-     *      --port  | -p  : Puerto en donde el servidor va a recibir mensajes(Opcional, se usara el default)
-     *      --hostc | -c  : Address del coordinador (Scheduler), obligatorio para agregarse al grupo si no se pasa --as-scheduler
-     *      --portc | -pc : Puerto del coordinador (opcional, se usara el default)
-     *      --ports | -ps : Puerto en donde el scheduler recibirá mensajes (Opcional, se usara el default)
-     *      --as-scheduler | --sh
-     *
-     *      Ejemplo 1: Servidor y Scheduler
-     *      server --sh
-
-     *      Ejemplo 2: Servidor
-     *      server -h 127.0.0.1
-     *
-     *      Si estan en la misma máquina se pueden utilizar los argumentos de puertos para diferenciarlos.
-     *
-     * @param args
-     */
-    public static void main(String[] args) {
-
-        int portServer = Constants.DEFAULT_SERVER_PORT;
-        int portScheduler = Constants.DEFAULT_SCHEDULER_PORT;
-        int portCoordinator = Constants.DEFAULT_SCHEDULER_PORT;
-        boolean isScheduler = false;
-
-        String coordinatorAddress = "";
-
-        if (args.length >= 1) {
-
-            portServer = getArgInt(new String[]{"--port","-p"},args,portServer);
-
-            portScheduler = getArgInt(new String[]{"--ports","-ps"},args,portScheduler);
-
-            coordinatorAddress = getArgStr(new String[]{"--hostc","-c"},args,null);
-
-            portCoordinator = getArgInt(new String[]{"--portc","-pc"},args,portCoordinator);
-
-            isScheduler = existArguments(new String[]{"--as-sh","--sh"},args);
-        }
-
-        printOrbWeaverIntro("Server");
-        printIPHost();
-
-        if(!isScheduler && StringUtils.isEmpty(coordinatorAddress)){
-            String[] addressport = askUserSchedulerAddress(portCoordinator);
-            coordinatorAddress = addressport[0];
-            portCoordinator = Integer.parseInt(addressport[1]);
-
-        }
-
-        Server scheduler = new Server(portServer,coordinatorAddress,portCoordinator,portScheduler,isScheduler);
-        scheduler.run();
-    }
 
     /**
      * Obtiene todos los servidores que ejecutan un servicio dado
@@ -454,13 +354,18 @@ public class Server {
     }
 
     public ServiceInterfaz getServiceExec(String name) {
-        if(name.equals("wordcount")){
-            return wordCountService;
+
+        if(onRequestServiceToClient != null){
+            return onRequestServiceToClient.getService(name);
         }
         return null;
     }
 
     public int getId() {
         return this.myId;
+    }
+
+    public void setOnRequestServiceToClient(OnRequestServiceToClient onRequestServiceToClient) {
+        this.onRequestServiceToClient = onRequestServiceToClient;
     }
 }

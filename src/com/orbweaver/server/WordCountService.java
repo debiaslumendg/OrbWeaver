@@ -1,8 +1,6 @@
 package com.orbweaver.server;
 
-
 import com.google.gson.Gson;
-import com.orbweaver.commons.RequestAnswerMsg;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -14,7 +12,7 @@ public class WordCountService implements ServiceInterfaz{
     private String name = "wordcount";
 
 
-        @Override
+    @Override
     public String getName() {
         return name;
     }

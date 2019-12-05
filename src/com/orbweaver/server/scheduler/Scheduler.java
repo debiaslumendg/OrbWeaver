@@ -172,21 +172,36 @@ public class Scheduler implements Runnable{
 		RequestServiceAnswerMsg requestServiceAnswerMsg = new RequestServiceAnswerMsg();
 
 		ArrayList<ServerInfo> allServersService = parentServer.getAllServersByServiceName(serviceName);
-		if( allServersService.size() > 0) {
 
-			ArrayList<ServerInfo> serversServices = ordServersByLoad(allServersService);
-			ServerInfo server = serversServices.get(0); // El que tenga menor carga
-
-			RequestInfo requestInfo = new RequestInfo(UUID.randomUUID().toString(), server.getId());
-			this.parentServer.getRequests().add(requestInfo);
-
-			requestServiceAnswerMsg.setServerInfo(server);
-			requestServiceAnswerMsg.setRequestId(requestInfo.getId());
-		}else{
+		if( allServersService.size() == 0) {
 			requestServiceAnswerMsg.setStatus(STATUS_ERROR_REQUEST);
 			requestServiceAnswerMsg.setCode(CODE_ERROR_SOLICITED_SERVICE_NOT_SERVER_FOUND);
+			return requestServiceAnswerMsg;
 		}
+
+		ArrayList<ServerInfo> orderedServers = ordServersByLoad(allServersService);
+
+		ServerInfo server = orderedServers.get(0); // El que tenga menor carga
+
+
+		RequestInfo requestInfo = new RequestInfo(UUID.randomUUID().toString(), server.getId());
+		this.parentServer.getRequests().add(requestInfo);
+
+		requestServiceAnswerMsg.setServerInfo(server);
+		requestServiceAnswerMsg.setRequestId(requestInfo.getId());
 		return requestServiceAnswerMsg;
+	}
+
+	public boolean pingServer(ServerInfo server) {
+
+		if(this.parentServer.sendMessageToServer(String.format(
+				"{\"code\":%d}", Constants.CODE_REQUEST_PING
+				),server)){
+			return true;
+		}else{
+			System.out.println(server + " is dead!");
+			return false;
+		}
 	}
 
 	/**
@@ -300,5 +315,21 @@ public class Scheduler implements Runnable{
 
 	public RequestInfo getRequestByID(String requestId) {
 		return this.parentServer.getRequestByID(requestId);
+	}
+
+	public ServerInfo getServerByID(int idServer) {
+		return this.parentServer.getServerByID(idServer);
+	}
+
+	public void removeServerByID(int idServer) {
+		this.parentServer.removeServerByID(idServer);
+	}
+
+	public void sendMessageRemoveServerToGroup(int idServer) {
+		sendMessageToGroup(
+				String.format("{\"code\":%d,\"id_servers\":[%d]}",
+						Constants.CODE_REQUEST_DEL_SERVER,
+						idServer)
+		);
 	}
 }

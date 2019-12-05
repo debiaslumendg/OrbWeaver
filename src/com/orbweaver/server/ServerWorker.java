@@ -70,7 +70,11 @@ public class ServerWorker implements Runnable{
                 server.addServer(requestAddServerMsg);
 
                 break;
-
+            case Constants.CODE_REQUEST_DEL_SERVER:
+                for(JsonElement server_id : jsonObjectMessage.get("id_servers").getAsJsonArray()) {
+                    this.server.removeServerByID(server_id.getAsInt());
+                }
+                break;
             case Constants.CODE_REQUEST_NEW_REQUEST:
                 RequestNewRequestMsg newRequestMsg = gson.fromJson(content, RequestNewRequestMsg.class);
 
@@ -83,6 +87,9 @@ public class ServerWorker implements Runnable{
 
                 RequestInfo request = this.server.getRequestByID(requestUpdate.getRequest_id());
                 request.setStatus(requestUpdate.getNew_status());
+                break;
+            case Constants.CODE_REQUEST_PING:
+                // Los pings no se responden
                 break;
             case Constants.CODE_REQUEST_EXEC_SERVICE:
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
@@ -107,7 +114,7 @@ public class ServerWorker implements Runnable{
                 }
                 // En caso de que sea exitosa la petición, llamamos a la clase encargada de manejarla con el socket
                 // del cliente
-                if(validateRequestAnswer.getStatus() == STATUS_SUCCESS_REQUEST) {
+                if(validateRequestAnswer.isSuccess()) {
                     ServiceInterfaz service = server.getServiceExec(requestServiceMsg.getName());
                     service.handleClient(clientSocket, dataInputStream, dataOutputStream);
 

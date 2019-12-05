@@ -3,6 +3,7 @@ package com.orbweaver.client;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.orbweaver.commons.*;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -15,19 +16,15 @@ import static com.orbweaver.commons.Constants.STATUS_SUCCESS_REQUEST;
 
 public class Client implements Runnable {
 
-    protected int portScheduler;
-    protected String addressScheduler;
+    private int portScheduler;
+    private String addressScheduler;
 
-    protected String serviceName;
+    private String serviceName;
     /** Cuando se realiza la peticion de una ejecucion al servidor si esta falla  por error del request_id se prueba a
      *  ejecutar de nuevo la request.
      */
-    private boolean mTryAgainRequest;
+    //private boolean mTryAgainRequest;
 
-    /**
-     * N intentos en ejecutar la request
-     */
-    private int ntries = 0;
     private OnServiceArgumentsToServer onServiceArgumentsToServer;
 
     public Client(String serviceName,int portScheduler, String schedulerAddress) {
@@ -36,11 +33,15 @@ public class Client implements Runnable {
         this.addressScheduler = schedulerAddress;
     }
 
+    public RequestServiceAnswerMsg getRequestScheduler() {
+        return getRequestScheduler("");
+    }
+
     /**
      * Se comunica con el Scheduler para pedirle la ejecución de un servicio
      * @return clase request respuesta del scheduler
      */
-    protected RequestServiceAnswerMsg getRequestScheduler(){
+    public RequestServiceAnswerMsg getRequestScheduler(String oldRequestId){
 
         RequestServiceAnswerMsg requestServiceAnswerMsg = null;
         System.out.format("Connecting to Scheduler(%s,%d)\n",this.addressScheduler,this.portScheduler);
@@ -57,7 +58,6 @@ public class Client implements Runnable {
                             this.addressScheduler,this.portScheduler)
                     , e);
         }
-
 
         Gson gson = new Gson();
 
@@ -78,6 +78,10 @@ public class Client implements Runnable {
         }
 
         RequestServiceMsg requestServiceMsg = new RequestServiceMsg(serviceName);
+        if(StringUtils.isNotEmpty(oldRequestId)){
+            requestServiceMsg.setIdRequest(oldRequestId);
+        }
+
         json = gson.toJson(requestServiceMsg);
 
         System.out.println("Sending " + json + " to the Scheduler");
@@ -133,17 +137,17 @@ public class Client implements Runnable {
      *
      * TODO: Falta manejo de errores así como en todo el programa por eso no unifico todavía el código parecido para los
      *      exception ya que cada exception se puede manejar distinto dependiendo de la clase y mensaje
+     * @return
      */
-    private void sendRequestToServer(ServerInfo serverInfo,String requestId){
+    private boolean sendRequestToServer(ServerInfo serverInfo, String requestId){
 
         Socket socket;
 
         try {
             socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot connect to Server ( %s , %d)",
-                            serverInfo.getAddress(), serverInfo.getPort()), e);
+            System.out.format("Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
         }
 
         Gson gson = new Gson();
@@ -157,9 +161,13 @@ public class Client implements Runnable {
             dataOutputStream    = new DataOutputStream(socket.getOutputStream());
             dataInputStream     = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("[Client] Error: Cannot open connection to Server ( %s , %d)",
-                            serverInfo.getAddress(), serverInfo.getPort()), e);
+            System.out.format("[Client] Error: Cannot open connection to Server ( %s , %d)\n",
+                    serverInfo.getAddress(), serverInfo.getPort());
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+            return false;
         }
 
 
@@ -173,32 +181,40 @@ public class Client implements Runnable {
         try {
             dataOutputStream.writeUTF(content);
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.format("[Client] Error: Cannot write JSON to Server ( %s , %d)\n",
+                    serverInfo.getAddress(), serverInfo.getPort());
+            try {
+                dataOutputStream.close();
+                dataInputStream.close();
+                socket.close();
+            } catch (IOException ignored) {
+            }
+            return false;
         }
 
+        // Aquí el servidor actualizó el estado de la request en el scheduler
         try {
             content = dataInputStream.readUTF();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("[Client] Error: Cannot read JSON from Server ( %s , %d)",
-                            serverInfo.getAddress(), serverInfo.getPort()), e);
+            System.out.format("[Client] Error: Cannot read JSON from Server ( %s , %d)\n",
+                    serverInfo.getAddress(), serverInfo.getPort());
+            try {
+                dataOutputStream.close();
+                dataInputStream.close();
+                socket.close();
+            } catch (IOException ignored) {
+            }
+            return false;
         }
-
 
         System.out.println("[Client] Received from Server" + content);
 
         RequestAnswerMsg requestAnswerMsg = gson.fromJson(content, RequestAnswerMsg.class);
 
-        switch (requestAnswerMsg.getStatus()){
-            case Constants.STATUS_SUCCESS_REQUEST:
-                if(onServiceArgumentsToServer != null){
-                    onServiceArgumentsToServer.onServiceArgumentsToServer(socket,dataInputStream,dataOutputStream);
-                }
-                break;
-            case STATUS_ERROR_REQUEST:
-                Util.mostrarErrorPrint(requestAnswerMsg.getCode());
-                mTryAgainRequest = true;
-                break;
+        if (requestAnswerMsg.getStatus() == STATUS_SUCCESS_REQUEST) {
+            if (onServiceArgumentsToServer != null) {
+                onServiceArgumentsToServer.onServiceArgumentsToServer(socket, dataInputStream, dataOutputStream);
+            }
         }
 
         try {
@@ -208,22 +224,41 @@ public class Client implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        if(requestAnswerMsg.getStatus() == STATUS_ERROR_REQUEST){
+            Util.mostrarErrorPrint(requestAnswerMsg.getCode());
+            return false;
+        }
+        return true;
     }
 
     @Override
     public void run() {
 
         RequestServiceAnswerMsg answerScheduler;
-        mTryAgainRequest = true;
-        ntries = 0;
-        while(mTryAgainRequest && ntries <3) {
-            mTryAgainRequest = false;
-            answerScheduler = getRequestScheduler();
-            if ( answerScheduler.getStatus() == STATUS_SUCCESS_REQUEST) {
-                sendRequestToServer(answerScheduler.getServerInfo(),answerScheduler.getRequestId());
+        /**
+         * N intentos en ejecutar la request
+         */
+        int ntries = 0;
+
+        answerScheduler = getRequestScheduler();
+
+        if(answerScheduler.isError()){
+            return;
+        }
+
+        while(ntries <3) {
+
+            if(sendRequestToServer(answerScheduler.getServerInfo(),answerScheduler.getRequestId())) break; ;
+
+            answerScheduler = getRequestScheduler(answerScheduler.getRequestId());
+            if(answerScheduler.isError()){
+                break;
             }
-            ntries ++;
+            ntries++;
+        }
+
+        if(ntries >= 3){
+            System.out.println("Error ejecutando el servicio!");
         }
     }
 

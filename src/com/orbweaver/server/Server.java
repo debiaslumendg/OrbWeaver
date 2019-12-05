@@ -11,6 +11,8 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.ListIterator;
+import java.util.Vector;
 
 public class Server {
 
@@ -154,7 +156,7 @@ public class Server {
     }
 
 
-    private ServerInfo getServerByID(int id){
+    public ServerInfo getServerByID(int id){
         for(ServerInfo serverInfo : servers){
             if(serverInfo.getId() == id) {
                 return serverInfo;
@@ -165,16 +167,22 @@ public class Server {
 
     }
 
-    private void sendJsonToServer(String json , ServerInfo serverInfo){
+    /**
+     * Envía un mensaje al servidor especificado
+     * Este metodo debería ejecutarlo solo el Scheduler
+     * @param message
+     * @param serverInfo
+     * @return
+     */
+    public boolean sendMessageToServer(String message, ServerInfo serverInfo){
 
         Socket socket;
 
         try {
             socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot connect to Server ( %s , %d)",
-                            serverInfo.getAddress(), serverInfo.getPort()), e);
+            System.out.format("[Scheduler] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
         }
 
 
@@ -182,22 +190,23 @@ public class Server {
         try {
             dataOutputStream = new DataOutputStream(socket.getOutputStream());
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot open connection to Server ( %s , %d)",
-                            serverInfo.getAddress(), serverInfo.getPort()), e);
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+            System.out.format("Error: Cannot open connection to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
         }
 
         try {
-            dataOutputStream.writeUTF(json);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        try {
+            dataOutputStream.writeUTF(message);
             socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.format("Error: Coudn't  write to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
         }
+
+        return true;
 
     }
 
@@ -205,16 +214,29 @@ public class Server {
      * Envia un mensaje al grupo
      * - Nuevo servidor
      * - Request actualizado
-     * TODO: Hacer ordenamiento de los mensajes , agregar / eliminar servidor/etc
+     * --- El unico que deberia llamar esta funcion es el scheduler. syncronized deberia hacer los mensajes ordenados
      */
-    public void sendMessageToGroup(String message) {
+    public synchronized void sendMessageToGroup(String message) {
 
-        for(ServerInfo serverInfo : servers) {
+        Vector<Integer> serversToRemove = new Vector<>();
+
+        ListIterator<ServerInfo> iter = servers.listIterator();
+        ServerInfo serverInfo;
+        while(iter.hasNext()) {
+            serverInfo = iter.next();
             if(serverInfo.getId() != myServerInfo.getId()) {
-                sendJsonToServer(message, serverInfo);
+                if(!sendMessageToServer(message, serverInfo)){
+                    serversToRemove.add(serverInfo.getId());
+                    iter.remove();
+                }
             }
         }
 
+        if(serversToRemove.size() > 0){
+            sendMessageToGroup(String.format("{\"code\":%d,\"id_servers\":%s}",
+                    Constants.CODE_REQUEST_DEL_SERVER,
+                    new Gson().toJson(serversToRemove.toArray())));
+        }
     }
 
 
@@ -380,5 +402,15 @@ public class Server {
 
     public ArrayList<RequestInfo> getRequests() {
         return  requests;
+    }
+
+    public void removeServerByID(int idServer) {
+        for(int i = 0; i < servers.size();i++){
+            if(servers.get(i).getId() == idServer){
+                servers.remove(i);
+                return;
+            }
+        }
+        return;
     }
 }

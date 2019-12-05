@@ -3,6 +3,7 @@ package com.orbweaver.server.scheduler;
 import com.google.gson.*;
 import com.orbweaver.commons.*;
 import com.orbweaver.server.RequestInfo;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -115,9 +116,27 @@ public class SchedulerWorker implements Runnable {
                 // Cliente quiere ejecutar un servicio
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
 
+                if(StringUtils.isNotEmpty(requestServiceMsg.getIdRequest())){
+
+                    RequestInfo requestInfo = this.scheduler.getRequestByID(requestServiceMsg.getIdRequest());
+
+                    ServerInfo serverInfo =  this.scheduler.getServerByID(requestInfo.getId_server());
+
+                    if(serverInfo != null && !this.scheduler.pingServer(serverInfo)){
+                        // TODO: El mismo problema de los ID's unicos
+                        //      Caso cuando se da un servidor por muerto pero en realidad no lo está
+                        //      Los id's no tienen que ser secuenciación respecto al tamaño de la lista o otra cosa
+                        this.scheduler.removeServerByID(requestInfo.getId_server());
+
+                        this.scheduler.sendMessageRemoveServerToGroup(requestInfo.getId_server());
+                    }
+
+                }
+
                 RequestServiceAnswerMsg requestServiceAnswerMsg = scheduler.createRequestService(requestServiceMsg.getName());
 
-                if(requestServiceAnswerMsg.getStatus() == Constants.STATUS_SUCCESS_REQUEST){
+                if(requestServiceAnswerMsg.isSuccess()){
+
                     // Si la request se creo correctamente actualizamos todos los servidores creandole la request
                     RequestInfo requestInfo = this.scheduler.getRequestByID(requestServiceAnswerMsg.getRequestId());
                     RequestNewRequestMsg requestNewRequestMsg = new RequestNewRequestMsg(requestInfo);

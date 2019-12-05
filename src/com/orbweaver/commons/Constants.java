@@ -24,6 +24,19 @@ public class Constants {
      * (aunque no es el scheduler, es por si tiene que ser el scheduler más adelante)*/
     public static final int CODE_REQUEST_NEW_REQUEST = 4;
 
+    /**
+     * Indica que el mensaje recibido es solo para ver si está vivo
+     *
+     * TODO: Intentar utilizar los acks de TCP
+     */
+    public static final int CODE_REQUEST_PING = 5;
+
+    /**
+     * Indica que el mensaje recibido es para eliminar un servidor del grupo
+     */
+    public static final int CODE_REQUEST_DEL_SERVER = 6;
+
+
     /** Codigo que indica el estado EXITOSO de la respuesta de un mensaje del Scheduler*/
     public static final int STATUS_SUCCESS_REQUEST = 2;
 

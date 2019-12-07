@@ -2,6 +2,27 @@
     "configurations": [
         {
             "type": "java",
+            "name": "CodeLens (Launch) - EsPrimo",
+            "request": "launch",
+            "mainClass": "com.orbweaver.client.EsPrimo",
+            "projectName": "OrbWeaver"
+        },
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - WordCountIsPrimeServer",
+            "request": "launch",
+            "mainClass": "com.orbweaver.server.WordCountIsPrimeServer",
+            "projectName": "OrbWeaver"
+        },
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - WordCountServer",
+            "request": "launch",
+            "mainClass": "com.orbweaver.server.WordCountServer",
+            "projectName": "OrbWeaver"
+        },
+        {
+            "type": "java",
             "name": "CodeLens (Launch) - Main",
             "request": "launch",
             "mainClass": "com.orbweaver.Main"

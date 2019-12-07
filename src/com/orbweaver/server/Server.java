@@ -304,6 +304,7 @@ public class Server {
             new Thread(new Scheduler(this,schedulerPort)).start();
 
             // TODO: Falta el proceso automático de elección del siguiente Scheduler
+            // Si muere se selecciona otro Scheduler con el algoritmo grandulon
         }
 
         openServerSocket();
@@ -412,5 +413,28 @@ public class Server {
             }
         }
         return;
+    }
+
+    public static void election(ArrayList<ServerInfo> servers, ServerInfo scheduler)
+    {
+        // Process ed = ProcessElection.getElectionInitiator();
+
+        if((ed.getPid()) == scheduler.getPid()) {
+            ServerInfo oldScheduler = scheduler;
+            oldScheduler.setDownflag(false);
+            scheduler = (ServerInfo) this.servers.get(ed.getPid()-1);
+            // ProcessElection.setElectionFlag(false);
+            scheduler.setCoordinatorFlag(true);
+            System.out.println("\nNew Coordinator is : P" + scheduler.getPid());
+        }
+        else {
+            System.out.print("\n");
+            for(int i = ed.getPid()+1; i < this.servers.size(); i++) {
+                System.out.println("P" + ed.getPid() + ": Sending message to P" + i);
+            }
+            ServerInfo a = (ServerInfo) this.servers.get(ed.getPid()+1);
+
+            // ProcessElection.setElectionInitiator(a);
+        }
     }
 }

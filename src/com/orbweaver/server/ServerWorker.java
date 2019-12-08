@@ -63,39 +63,39 @@ public class ServerWorker implements Runnable{
 
         switch (code){
             // Mensaje de difusión recibido : Agregar servidor
-            case Constants.CODE_REQUEST_ADD_SERVER:
+            case Constants.CODE_MESSAGE_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
                 server.getServers().add(requestAddServerMsg.getServer());
                 this.server.setNextServerID(server.getNextServerID() + 1);
                 break;
             // Mensaje de difusión recibido :Eliminar servidor
-            case Constants.CODE_REQUEST_DEL_SERVER:
+            case Constants.CODE_MESSAGE_REMOVE_SERVER:
                 for(JsonElement server_id : jsonObjectMessage.get("id_servers").getAsJsonArray()) {
                     this.server.removeServerByID(server_id.getAsInt());
                 }
                 break;
             // Mensaje de difusión recibido : Request creada
-            case Constants.CODE_REQUEST_NEW_REQUEST:
+            case Constants.CODE_MESSAGE_NEW_REQUEST:
                 RequestNewRequestMsg newRequestMsg = gson.fromJson(content, RequestNewRequestMsg.class);
 
-                this.server.getRequests().add(newRequestMsg.getRequest_info());
+                this.server.getRequests().add(newRequestMsg.getRequestInfo());
                 break;
 
             // Mensaje de difusión recibido : Actualizar estado de request
-            case Constants.CODE_REQUEST_UPDATE_REQUEST:
+            case Constants.CODE_MESSAGE_UPDATE_REQUEST:
                 // Actualización de una request modo actualizar backup
                 RequestUpdateRequestMsg requestUpdate = gson.fromJson(content, RequestUpdateRequestMsg.class);
 
-                RequestInfo request = this.server.getRequestByID(requestUpdate.getRequest_id());
-                request.setStatus(requestUpdate.getNew_status());
+                RequestInfo request = this.server.getRequestByID(requestUpdate.getRequestID());
+                request.setStatus(requestUpdate.getNewStatus());
                 break;
             // Mensaje recibido: "Ping" . ¿Are you alive?
-            case Constants.CODE_REQUEST_PING:
+            case Constants.CODE_MESSAGE_PING:
                 // Los pings no se responden
                 break;
 
             // Mensaje de ejecución de servicio por cliente
-            case Constants.CODE_REQUEST_EXEC_SERVICE:
+            case Constants.CODE_MESSAGE_EXEC_SERVICE:
 
                 // Obtenemos una clase para el mensaje
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);

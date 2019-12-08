@@ -5,7 +5,7 @@ package com.orbweaver.commons;
  */
 public class RequestServiceMsg {
 
-    private int code = Constants.CODE_REQUEST_EXEC_SERVICE; // Código del mensaje
+    private int code = Constants.CODE_MESSAGE_EXEC_SERVICE; // Código del mensaje
     private String name; // Nombre del servicio a pedir
     private String id_request; // ID del request
 

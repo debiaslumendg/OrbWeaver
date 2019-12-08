@@ -12,8 +12,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
-import static com.orbweaver.commons.Util.getIPHost;
-
 public class Server {
 
     private int          serverPort     = Constants.DEFAULT_SERVER_PORT;
@@ -141,7 +139,7 @@ public class Server {
                 System.out.println("[Server] \tRequests: " + requests);
 
 
-                myId = requestAddServerAnswerMsg.getServer_id();
+                myId = requestAddServerAnswerMsg.getServerID();
                 nextServerID = myId + 1;
                 System.out.println("[Server] \tMy ID: " + myId);
 

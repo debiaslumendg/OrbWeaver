@@ -257,7 +257,7 @@ public class Scheduler implements Runnable{
 
         if(serversToRemove.size() > 0){
             sendMessageToGroup(String.format("{\"code\":%d,\"id_servers\":%s}",
-                    Constants.CODE_REQUEST_DEL_SERVER,
+                    Constants.CODE_MESSAGE_REMOVE_SERVER,
                     new Gson().toJson(serversToRemove.toArray())));
         }
     }
@@ -303,7 +303,7 @@ public class Scheduler implements Runnable{
 	public boolean pingServer(ServerInfo server) {
 
 		if(sendMessageToServer(String.format(
-				"{\"code\":%d}", Constants.CODE_REQUEST_PING
+				"{\"code\":%d}", Constants.CODE_MESSAGE_PING
 				),server)){
 			return true;
 		}else{
@@ -321,7 +321,7 @@ public class Scheduler implements Runnable{
 
 		int load = 0;
 		for(RequestInfo requestInfo : this.parentServer.getRequests()){
-			if(requestInfo.getId_server() == idServer){
+			if(requestInfo.getIdServer() == idServer){
 				load ++;
 			}
 		}
@@ -390,10 +390,10 @@ public class Scheduler implements Runnable{
 	public RequestAnswerMsg updateRequest(RequestUpdateRequestMsg request) {
 		RequestAnswerMsg answer = new RequestAnswerMsg();
 
-		RequestInfo r = this.parentServer.getRequestByID(request.getRequest_id());
+		RequestInfo r = this.parentServer.getRequestByID(request.getRequestID());
 		if(r != null){
-			if(r.getId_server() == request.getServer_id()){
-				RequestInfo.StatusRequest newStatus = request.getNew_status();
+			if(r.getIdServer() == request.getServerID()){
+				RequestInfo.StatusRequest newStatus = request.getNewStatus();
 				if(newStatus == RequestInfo.StatusRequest.RUNNING &&
 						(r.getStatus() == RequestInfo.StatusRequest.DONE ||
 								r.getStatus() == RequestInfo.StatusRequest.RUNNING)) {
@@ -401,7 +401,7 @@ public class Scheduler implements Runnable{
 					answer.setCode(CODE_ERROR_INVALID_REQUEST_DUPLICATED);
 				}else{
 					answer.setStatus(STATUS_SUCCESS_REQUEST);
-					r.setStatus(request.getNew_status());
+					r.setStatus(request.getNewStatus());
 
 					sendMessageToGroup(new Gson().toJson(request));
 				}
@@ -431,7 +431,7 @@ public class Scheduler implements Runnable{
 	public void sendMessageRemoveServerToGroup(int idServer) {
 		sendMessageToGroup(
 				String.format("{\"code\":%d,\"id_servers\":[%d]}",
-						Constants.CODE_REQUEST_DEL_SERVER,
+						Constants.CODE_MESSAGE_REMOVE_SERVER,
 						idServer)
 		);
 	}

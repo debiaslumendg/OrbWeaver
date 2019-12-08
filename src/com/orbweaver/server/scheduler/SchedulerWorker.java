@@ -100,7 +100,7 @@ public class SchedulerWorker implements Runnable {
 
         ServerInfo serverInfo;
         switch (code){
-            case Constants.CODE_REQUEST_ADD_SERVER:
+            case Constants.CODE_MESSAGE_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
 
                 serverInfo = requestAddServerMsg.getServer();
@@ -117,7 +117,7 @@ public class SchedulerWorker implements Runnable {
                 content = gson.toJson(requestAddServerAnswerMsg);
 
                 break;
-            case Constants.CODE_REQUEST_EXEC_SERVICE:
+            case Constants.CODE_MESSAGE_EXEC_SERVICE:
                 // Cliente quiere ejecutar un servicio
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
 
@@ -125,15 +125,12 @@ public class SchedulerWorker implements Runnable {
 
                     RequestInfo requestInfo = this.scheduler.getRequestByID(requestServiceMsg.getIdRequest());
 
-                    serverInfo = this.scheduler.getServerByID(requestInfo.getId_server());
+                    serverInfo = this.scheduler.getServerByID(requestInfo.getIdServer());
 
                     if(serverInfo != null && !this.scheduler.pingServer(serverInfo)){
-                        // TODO: El mismo problema de los ID's unicos
-                        //      Caso cuando se da un servidor por muerto pero en realidad no lo está
-                        //      Los id's no tienen que ser secuenciación respecto al tamaño de la lista o otra cosa
-                        this.scheduler.removeServerByID(requestInfo.getId_server());
+                        this.scheduler.removeServerByID(requestInfo.getIdServer());
 
-                        this.scheduler.sendMessageRemoveServerToGroup(requestInfo.getId_server());
+                        this.scheduler.sendMessageRemoveServerToGroup(requestInfo.getIdServer());
                     }
 
                 }
@@ -151,7 +148,7 @@ public class SchedulerWorker implements Runnable {
                 content = gson.toJson(requestServiceAnswerMsg);
 
                 break;
-            case Constants.CODE_REQUEST_UPDATE_REQUEST:
+            case Constants.CODE_MESSAGE_UPDATE_REQUEST:
                 // Servidor quiere actualizar el estado de una request
                 RequestUpdateRequestMsg requestUpdate = gson.fromJson(content, RequestUpdateRequestMsg.class);
 

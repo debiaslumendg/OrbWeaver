@@ -8,7 +8,7 @@ import com.orbweaver.server.RequestInfo;
  * ID que le ha pasado el usuario
  */
 public class RequestUpdateRequestMsg {
-    private int code = Constants.CODE_REQUEST_UPDATE_REQUEST; // Codigo de la accion al scheduler
+    private int code = Constants.CODE_MESSAGE_UPDATE_REQUEST; // Codigo de la accion al scheduler
     private int server_id = -1 ; // ID del servidor validando la request
     private RequestInfo.StatusRequest new_status; // ID del servidor validando la request
     private String request_id; // ID De la request a validar
@@ -27,27 +27,27 @@ public class RequestUpdateRequestMsg {
         this.code = code;
     }
 
-    public int getServer_id() {
+    public int getServerID() {
         return server_id;
     }
 
-    public void setServer_id(int server_id) {
+    public void setServerID(int server_id) {
         this.server_id = server_id;
     }
 
-    public String getRequest_id() {
+    public String getRequestID() {
         return request_id;
     }
 
-    public void setRequest_id(String request_id) {
+    public void setRequestID(String request_id) {
         this.request_id = request_id;
     }
 
-    public RequestInfo.StatusRequest getNew_status() {
+    public RequestInfo.StatusRequest getNewStatus() {
         return new_status;
     }
 
-    public void setNew_status(RequestInfo.StatusRequest new_status) {
+    public void setNewStatus(RequestInfo.StatusRequest new_status) {
         this.new_status = new_status;
     }
 }

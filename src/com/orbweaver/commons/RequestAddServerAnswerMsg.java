@@ -19,11 +19,11 @@ public class RequestAddServerAnswerMsg {
     }
 
 
-    public int getServer_id() {
+    public int getServerID() {
         return server_id;
     }
 
-    public void setServer_id(int server_id) {
+    public void setServerID(int server_id) {
         this.server_id = server_id;
     }
 

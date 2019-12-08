@@ -64,23 +64,26 @@ public class ServerWorker implements Runnable{
         int code = jsonObjectMessage.get("code").getAsInt();
 
         switch (code){
+            // Mensaje de difusión recibido : Agregar servidor
             case Constants.CODE_REQUEST_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
-
-                server.addServer(requestAddServerMsg);
+                server.getServers().add(requestAddServerMsg.getServer());
 
                 break;
+            // Mensaje de difusión recibido :Eliminar servidor
             case Constants.CODE_REQUEST_DEL_SERVER:
                 for(JsonElement server_id : jsonObjectMessage.get("id_servers").getAsJsonArray()) {
                     this.server.removeServerByID(server_id.getAsInt());
                 }
                 break;
+            // Mensaje de difusión recibido : Request creada
             case Constants.CODE_REQUEST_NEW_REQUEST:
                 RequestNewRequestMsg newRequestMsg = gson.fromJson(content, RequestNewRequestMsg.class);
 
                 this.server.getRequests().add(newRequestMsg.getRequest_info());
                 break;
 
+            // Mensaje de difusión recibido : Actualizar estado de request
             case Constants.CODE_REQUEST_UPDATE_REQUEST:
                 // Actualización de una request modo actualizar backup
                 RequestUpdateRequestMsg requestUpdate = gson.fromJson(content, RequestUpdateRequestMsg.class);
@@ -88,22 +91,34 @@ public class ServerWorker implements Runnable{
                 RequestInfo request = this.server.getRequestByID(requestUpdate.getRequest_id());
                 request.setStatus(requestUpdate.getNew_status());
                 break;
+            // Mensaje recibido: "Ping" . ¿Are you alive?
             case Constants.CODE_REQUEST_PING:
                 // Los pings no se responden
                 break;
+
+            // Mensaje de ejecución de servicio por cliente
             case Constants.CODE_REQUEST_EXEC_SERVICE:
+
+                // Obtenemos una clase para el mensaje
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
 
+                // Obtenemos la request que tenemos guardada en nuestra lista
+                // La que se debió guardar, por un mensaje de difusión CODE_REQUEST_UPDATE_REQUEST que envió el Scheduler
                 RequestInfo myrequest = this.server.getRequestByID(requestServiceMsg.getIdRequest());
-                RequestAnswerMsg validateRequestAnswer = updateStatusRequestScheduler(
+
+                // Nos comunicamos con el scheduler para actualizar el estado de la peticion
+                // El scheduler hace la difusión del cambio de estado de la request a RUNNING a todos los demás miembros
+                // del grupo
+                RequestAnswerMsg updateRequest = updateStatusRequestScheduler(
                         requestServiceMsg.getIdRequest(),
                         RequestInfo.StatusRequest.RUNNING
                 );
 
+                // Establece el estado de la request en mi lista
                 myrequest.setStatus(RequestInfo.StatusRequest.RUNNING);
 
                 // Enviamos el mensaje de respuesta -- errror -success
-                content = gson.toJson(validateRequestAnswer);
+                content = gson.toJson(updateRequest);
                 try {
                     dataOutputStream.writeUTF(content);
                 } catch (IOException e) {
@@ -114,7 +129,7 @@ public class ServerWorker implements Runnable{
                 }
                 // En caso de que sea exitosa la petición, llamamos a la clase encargada de manejarla con el socket
                 // del cliente
-                if(validateRequestAnswer.isSuccess()) {
+                if(updateRequest.isSuccess()) {
                     ServiceInterfaz service = server.getServiceExec(requestServiceMsg.getName());
                     service.handleClient(clientSocket, dataInputStream, dataOutputStream);
 

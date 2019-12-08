@@ -53,8 +53,12 @@ public class RequestInfo {
     }
 
     public RequestInfo(String id, int id_server){
-
         this.id = id;
         this.id_server = id_server;
+    }
+
+    @Override
+    public String toString() {
+        return "Request( id= " + getId()   +  ", is_server= " + getId_server() + " , status  = "  + getStatus() + " ) ";
     }
 }

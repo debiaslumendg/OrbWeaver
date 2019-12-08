@@ -133,6 +133,8 @@ public class Server {
                 System.out.println("[Server] Got from Scheduler: ");
                 servers = requestAddServerAnswerMsg.getServers();
                 System.out.println("[Server] \tServers: " + servers);
+                requests = requestAddServerAnswerMsg.getRequests();
+                System.out.println("[Server] \tRequests: " + requests);
 
                 myId = requestAddServerAnswerMsg.getServer_id();
 
@@ -167,117 +169,7 @@ public class Server {
 
     }
 
-    /**
-     * Envía un mensaje al servidor especificado
-     * Este metodo debería ejecutarlo solo el Scheduler
-     * @param message
-     * @param serverInfo
-     * @return
-     */
-    public boolean sendMessageToServer(String message, ServerInfo serverInfo){
 
-        Socket socket;
-
-        try {
-            socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
-        } catch (IOException e) {
-            System.out.format("[Scheduler] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-
-        DataOutputStream dataOutputStream;
-        try {
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-        } catch (IOException e) {
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-            System.out.format("Error: Cannot open connection to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-        try {
-            dataOutputStream.writeUTF(message);
-            socket.close();
-        } catch (IOException e) {
-            System.out.format("Error: Coudn't  write to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-        return true;
-
-    }
-
-    /**
-     * Envia un mensaje al grupo
-     * - Nuevo servidor
-     * - Request actualizado
-     * --- El unico que deberia llamar esta funcion es el scheduler. syncronized deberia hacer los mensajes ordenados
-     */
-    public synchronized void sendMessageToGroup(String message) {
-
-        Vector<Integer> serversToRemove = new Vector<>();
-
-        ListIterator<ServerInfo> iter = servers.listIterator();
-        ServerInfo serverInfo;
-        while(iter.hasNext()) {
-            serverInfo = iter.next();
-            if(serverInfo.getId() != myServerInfo.getId()) {
-                if(!sendMessageToServer(message, serverInfo)){
-                    serversToRemove.add(serverInfo.getId());
-                    iter.remove();
-                }
-            }
-        }
-
-        if(serversToRemove.size() > 0){
-            sendMessageToGroup(String.format("{\"code\":%d,\"id_servers\":%s}",
-                    Constants.CODE_REQUEST_DEL_SERVER,
-                    new Gson().toJson(serversToRemove.toArray())));
-        }
-    }
-
-
-    /**
-     * Agrega un servidor a su lista de miembros.
-     * -    Para agregarse un servidor al grupo se debe comunicar con el coordinador, para nuestro proyecto es el mismo Scheduler.
-     * -    El scheduler lo agrega a su lista de miembros interna y le asigna un ID a él y a sus servicios nuevos que el scheduler no conozca.
-     * -    El scheduler después de agregarlo a su lista interna le envía un mensaje a todos los miembros del grupo, con
-     *      la información del nuevo miembro del grupo para que se actualizen.
-     *      Es necesario que todos los miembros sepan quienes son el resto, por si:
-     *          * Ocurre un error y el scheduler y el scheduler back up mueren, cualquier puede tomar el lugar de scheduler.
-     *              Por lo que necesita la lista de miembros para seleccionar entre ellos el nuevo scheduler.
-     *
-     * @param requestAddServerMsg Informacion del nuevo servidor a agregar
-     * @return ID del nuevo servidor
-     */
-    public synchronized int addServer(RequestAddServerMsg requestAddServerMsg){
-
-        // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
-        int newServerID;
-        ServerInfo serverInfo = requestAddServerMsg.getServer();
-
-        if(iAmScheduler) {
-            // TODO : Cambiar la forma en que se maneja la creacion de ids de los servidores
-            newServerID = servers.get(servers.size() - 1).getId() + 1;
-            serverInfo.setId(newServerID);
-        }else{
-            newServerID = serverInfo.getId();
-        }
-
-        if(iAmScheduler) {
-            sendMessageToGroup(new Gson().toJson(requestAddServerMsg));
-        }
-
-        servers.add(serverInfo);
-
-        System.out.format("Added server ID=%d :\n\tAddress - (%s,%d)\n", newServerID, serverInfo.getAddress(), serverInfo.getPort());
-        System.out.format("\tServices %s\n", serverInfo.getServices());
-
-        return newServerID;
-    }
 
     /**
      *

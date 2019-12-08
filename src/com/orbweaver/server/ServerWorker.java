@@ -6,6 +6,8 @@ import com.orbweaver.commons.*;
 import java.io.*;
 import java.net.Socket;
 
+import static com.orbweaver.commons.Constants.CODE_MESSAGE_WHO_IS_SCHEDULER;
+
 public class ServerWorker implements Runnable{
 
     protected Socket clientSocket = null;
@@ -62,6 +64,21 @@ public class ServerWorker implements Runnable{
         int code = jsonObjectMessage.get("code").getAsInt();
 
         switch (code){
+
+            // Mensaje preguntando quién es el Scheduler
+            case CODE_MESSAGE_WHO_IS_SCHEDULER:
+                ServerInfo scheduler = new ServerInfo();
+                scheduler.setAddress(this.server.geteCoordinatorAddress());
+                scheduler.setPort(this.server.getCoordinatorPort());
+                // Enviamos el mensaje con el scheduler
+                content = gson.toJson(scheduler);
+                try {
+                    dataOutputStream.writeUTF(content);
+                } catch (IOException e) {
+                    System.out.format("Error: Cannot write JSON to Server ( %s , %d)\n",
+                            clientSocket.getInetAddress().getHostName(),clientSocket.getPort());
+                }
+                break;
             // Mensaje de difusión recibido : Agregar servidor
             case Constants.CODE_MESSAGE_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);

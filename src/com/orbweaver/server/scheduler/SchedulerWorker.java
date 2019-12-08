@@ -117,6 +117,11 @@ public class SchedulerWorker implements Runnable {
                 content = gson.toJson(requestAddServerAnswerMsg);
 
                 break;
+
+            case Constants.CODE_MESSAGE_GET_MEMBERS_LIST:
+
+                content = gson.toJson(this.scheduler.getServers());
+                break;
             case Constants.CODE_MESSAGE_EXEC_SERVICE:
                 // Cliente quiere ejecutar un servicio
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);

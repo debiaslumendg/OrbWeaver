@@ -10,6 +10,9 @@ public class ServerInfo {
     private List<ServiceInfo> services;
 
 
+    public ServerInfo() {
+    }
+
     public ServerInfo(int port, List<ServiceInfo> services) {
         this.port = port;
         this.services = services;

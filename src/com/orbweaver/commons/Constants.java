@@ -36,6 +36,15 @@ public class Constants {
      */
     public static final int CODE_MESSAGE_REMOVE_SERVER = 6;
 
+    /**
+     * Indica que el mensaje recibido por el Servidor es preguntando quién es el Scheduler
+     * */
+    public static final int CODE_MESSAGE_WHO_IS_SCHEDULER = 7;
+
+    /**
+     * Indica que el mensaje recibido por el Scheduler es para pedir una lista de miembros
+     * */
+    public static final int CODE_MESSAGE_GET_MEMBERS_LIST = 8;
 
     /** Codigo que indica el estado EXITOSO de la respuesta de un mensaje del Scheduler*/
     public static final int STATUS_SUCCESS_REQUEST = 2;

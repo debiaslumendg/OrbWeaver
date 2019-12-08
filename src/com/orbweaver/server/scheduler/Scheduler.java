@@ -122,29 +122,6 @@ public class Scheduler implements Runnable{
 		}
 	}
 
-	/**
-	 *  Lee de un archivo externo en formato JSON los servicios definidos.
-	public void readFileJsonServices(){
-
-		JsonArray jsonArrayServices = null;
-		byte[] bytes;
-		try {
-			bytes = Files.readAllBytes(Paths.get("services.json"));
-			String content = new String(bytes);
-			jsonArrayServices = new JsonParser().parse(content).getAsJsonArray();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
-		if(jsonArrayServices != null){
-			String nameService;
-			for (int i = 0; i < jsonArrayServices.size(); i++) {
-				nameService = jsonArrayServices.get(i).getAsJsonObject().get("name").getAsString();
-				mServicios.put(0,new ServicioInfo(0,nameService)) ;
-			}
-		}
-	}
-	 */
 
 
 

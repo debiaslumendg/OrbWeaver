@@ -129,6 +129,7 @@ public class ServerWorker implements Runnable{
                 // del cliente
                 if(updateRequest.isSuccess()) {
                     ServiceInterfaz service = server.getServiceExec(requestServiceMsg.getName());
+
                     service.handleClient(clientSocket, dataInputStream, dataOutputStream);
 
                     updateStatusRequestScheduler(requestServiceMsg.getIdRequest(), RequestInfo.StatusRequest.DONE);

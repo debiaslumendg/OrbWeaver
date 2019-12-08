@@ -1,6 +1,5 @@
 package com.orbweaver.server;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -22,19 +21,18 @@ public class IsPrimeService implements ServiceInterfaz{
      * Atiende las peticion para ejecutar wordcount, lee los argumentos pasados por el cliente
      * @param dataInputStream
      * @param dataOutputStream
+     * @return
      */
     @Override
-    public void handleClient(Socket socket, DataInputStream dataInputStream, DataOutputStream dataOutputStream) {
-        long nWords = 0;
+    public boolean handleClient(Socket socket, DataInputStream dataInputStream, DataOutputStream dataOutputStream) {
         String content;
-        Gson gson = new Gson();
 
         try {
             content = dataInputStream.readUTF();
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("[Server] Error: Cannot read JSON from Client ( %s , %d)",
-                            socket.getInetAddress().getHostName(),socket.getPort()), e);
+            System.out.format("[Server] Error: Cannot read JSON from Client ( %s , %d)\n",
+                    socket.getInetAddress().getHostName(),socket.getPort());
+            return false;
         }
 
         JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
@@ -50,10 +48,12 @@ public class IsPrimeService implements ServiceInterfaz{
         try {
             dataOutputStream.writeUTF(content);
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
-                            socket.getInetAddress().getHostName(),socket.getPort()), e);
+            System.out.format("Error: Cannot write JSON to Server ( %s , %d)\n",
+                            socket.getInetAddress().getHostName(),socket.getPort());
+            return false;
         }
+
+        return true;
 
     }
 

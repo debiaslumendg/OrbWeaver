@@ -21,9 +21,10 @@ public class WordCountService implements ServiceInterfaz{
      * Atiende las peticion para ejecutar wordcount, lee los argumentos pasados por el cliente
      * @param dataInputStream
      * @param dataOutputStream
+     * @return
      */
     @Override
-    public void handleClient(Socket socket, DataInputStream dataInputStream, DataOutputStream dataOutputStream) {
+    public boolean handleClient(Socket socket, DataInputStream dataInputStream, DataOutputStream dataOutputStream) {
         int nWords = 0;
         String content;
         Gson gson = new Gson();
@@ -33,10 +34,9 @@ public class WordCountService implements ServiceInterfaz{
             try {
                 content = dataInputStream.readUTF();
             } catch (IOException e) {
-                throw new RuntimeException(
-                        String.format("[Server] Error: Cannot read JSON from Client ( %s , %d)",
-                                socket.getInetAddress().getHostName(),socket.getPort())
-                        , e);
+                System.out.format("[Server] Error: Cannot read JSON from Client ( %s , %d)\n",
+                                socket.getInetAddress().getHostName(),socket.getPort());
+                return false;
             }
 
             ServiceWordCountArgMsg serviceWordCountArgMsg;
@@ -60,11 +60,12 @@ public class WordCountService implements ServiceInterfaz{
         try {
             dataOutputStream.writeUTF(content);
         } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
-                            socket.getInetAddress().getHostName(),socket.getPort())
-                    , e);
+            System.out.format("Error: Cannot write JSON to Server ( %s , %d)",
+                            socket.getInetAddress().getHostName(),socket.getPort());
+            return false;
         }
+
+        return true;
 
     }
 

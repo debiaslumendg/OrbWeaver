@@ -129,7 +129,6 @@ public class SchedulerWorker implements Runnable {
 
                     if(serverInfo != null && !this.scheduler.pingServer(serverInfo)){
                         this.scheduler.removeServerByID(requestInfo.getIdServer());
-
                         this.scheduler.sendMessageRemoveServerToGroup(requestInfo.getIdServer());
                     }
 

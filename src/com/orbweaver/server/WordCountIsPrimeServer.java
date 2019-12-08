@@ -85,7 +85,7 @@ public class WordCountIsPrimeServer implements  OnRequestServiceToClient {
         }
 
         printOrbWeaverIntro("WordCount Server");
-        printIPHost();
+        System.out.println("IP Address:- " + getIPHost());
 
         if(!isScheduler && StringUtils.isEmpty(coordinatorAddress)){
             String[] addressport = askUserSchedulerAddress(portCoordinator);

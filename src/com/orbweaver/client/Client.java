@@ -175,8 +175,8 @@ public class Client implements Runnable {
         requestServiceMsg.setIdRequest(requestId);
         content = gson.toJson(requestServiceMsg);
 
-        System.out.format("[Client] Sending " + content + " to the Server (%s,%s, %d)\n",
-                serverInfo.getName(),serverInfo.getAddress(),serverInfo.getPort());
+        System.out.format("[Client] Sending " + content + " to the Server (%s, %d)\n",
+                serverInfo.getAddress(),serverInfo.getPort());
 
         try {
             dataOutputStream.writeUTF(content);

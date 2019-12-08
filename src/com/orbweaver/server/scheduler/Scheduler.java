@@ -5,12 +5,15 @@ import com.orbweaver.commons.*;
 import com.orbweaver.server.RequestInfo;
 import com.orbweaver.server.Server;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.ListIterator;
 import java.util.UUID;
+import java.util.Vector;
 
 import static com.orbweaver.commons.Constants.*;
 
@@ -143,15 +146,6 @@ public class Scheduler implements Runnable{
 	}
 	 */
 
-	/**
-	 * Agrega un servidor al grupo.
-	 * Se comunica con todos los demás servidores en el grupo comunicandoles su llegada
-	 * @param server Objeto conteniendo información del nuevo servidor
-	 * @return ID del nuevo servidor
-	 */
-	public int addServer(RequestAddServerMsg server) {
-		return parentServer.addServer(server);
-	}
 
 
 	/**
@@ -185,17 +179,131 @@ public class Scheduler implements Runnable{
 
 
 		RequestInfo requestInfo = new RequestInfo(UUID.randomUUID().toString(), server.getId());
-		this.parentServer.getRequests().add(requestInfo);
+		getRequests().add(requestInfo);
 
 		requestServiceAnswerMsg.setServerInfo(server);
 		requestServiceAnswerMsg.setRequestId(requestInfo.getId());
 		return requestServiceAnswerMsg;
 	}
+	public ArrayList<RequestInfo> getRequests(){
+		return this.parentServer.getRequests();
+	}
+    /**
+     * Envía un mensaje al servidor especificado
+     * Este metodo debería ejecutarlo solo el Scheduler
+     * @param message
+     * @param serverInfo
+     * @return
+     */
+    public boolean sendMessageToServer(String message, ServerInfo serverInfo){
+
+        Socket socket;
+
+        try {
+            socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
+        } catch (IOException e) {
+            System.out.format("[Scheduler] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
+        }
+
+
+        DataOutputStream dataOutputStream;
+        try {
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        } catch (IOException e) {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+            System.out.format("Error: Cannot open connection to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
+        }
+
+        try {
+            dataOutputStream.writeUTF(message);
+            socket.close();
+        } catch (IOException e) {
+            System.out.format("Error: Coudn't  write to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
+        }
+
+        return true;
+
+    }
+
+    /**
+     * Envia un mensaje al grupo
+     * - Nuevo servidor
+     * - Request actualizado
+     * --- El unico que deberia llamar esta funcion es el scheduler. syncronized deberia hacer los mensajes ordenados
+     */
+    public synchronized void sendMessageToGroup(String message) {
+
+        Vector<Integer> serversToRemove = new Vector<>();
+
+        ListIterator<ServerInfo> iter = this.getServers().listIterator();
+        ServerInfo serverInfo;
+        while(iter.hasNext()) {
+            serverInfo = iter.next();
+
+            // Envia el mensaje a todos menos a él mismo
+            if(serverInfo.getId() != this.parentServer.getId()) {
+                if(!sendMessageToServer(message, serverInfo)){
+                    serversToRemove.add(serverInfo.getId());
+                    iter.remove();
+                }
+            }
+        }
+
+        if(serversToRemove.size() > 0){
+            sendMessageToGroup(String.format("{\"code\":%d,\"id_servers\":%s}",
+                    Constants.CODE_MESSAGE_REMOVE_SERVER,
+                    new Gson().toJson(serversToRemove.toArray())));
+        }
+    }
+    /**
+     * Agrega un servidor a su lista de miembros.
+     * -    Para agregarse un servidor al grupo se debe comunicar con el coordinador, para nuestro proyecto es el mismo Scheduler.
+     * -    El scheduler lo agrega a su lista de miembros interna y le asigna un ID a él y a sus servicios nuevos que el scheduler no conozca.
+     * -    El scheduler después de agregarlo a su lista interna le envía un mensaje a todos los miembros del grupo, con
+     *      la información del nuevo miembro del grupo para que se actualizen.
+     *      Es necesario que todos los miembros sepan quienes son el resto, por si:
+     *          * Ocurre un error y el scheduler y el scheduler back up mueren, cualquier puede tomar el lugar de scheduler.
+     *              Por lo que necesita la lista de miembros para seleccionar entre ellos el nuevo scheduler.
+     *
+     * @param requestAddServerMsg Informacion del nuevo servidor a agregar
+     * @return ID del nuevo servidor
+     */
+    public synchronized int addServer(RequestAddServerMsg requestAddServerMsg){
+
+        // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
+        int newServerID;
+        ServerInfo serverInfo = requestAddServerMsg.getServer();
+
+        // TODO : Cambiar la forma en que se maneja la creacion de ids de los servidores
+        ArrayList<ServerInfo> servers = this.getServers();
+        newServerID = getNextServerID();
+        serverInfo.setId(newServerID);
+		setNextID(newServerID + 1);
+
+        sendMessageToGroup(new Gson().toJson(requestAddServerMsg));
+
+        servers.add(serverInfo);
+
+        System.out.format("Added server ID=%d :\n\tAddress - (%s,%d)\n", newServerID, serverInfo.getAddress(), serverInfo.getPort());
+        System.out.format("\tServices %s\n", serverInfo.getServices());
+
+        return newServerID;
+    }
+
+	private void setNextID(int n) {
+		this.parentServer.setNextServerID(n);
+	}
 
 	public boolean pingServer(ServerInfo server) {
 
-		if(this.parentServer.sendMessageToServer(String.format(
-				"{\"code\":%d}", Constants.CODE_REQUEST_PING
+		if(sendMessageToServer(String.format(
+				"{\"code\":%d}", Constants.CODE_MESSAGE_PING
 				),server)){
 			return true;
 		}else{
@@ -213,7 +321,7 @@ public class Scheduler implements Runnable{
 
 		int load = 0;
 		for(RequestInfo requestInfo : this.parentServer.getRequests()){
-			if(requestInfo.getId_server() == idServer){
+			if(requestInfo.getIdServer() == idServer){
 				load ++;
 			}
 		}
@@ -282,10 +390,10 @@ public class Scheduler implements Runnable{
 	public RequestAnswerMsg updateRequest(RequestUpdateRequestMsg request) {
 		RequestAnswerMsg answer = new RequestAnswerMsg();
 
-		RequestInfo r = this.parentServer.getRequestByID(request.getRequest_id());
+		RequestInfo r = this.parentServer.getRequestByID(request.getRequestID());
 		if(r != null){
-			if(r.getId_server() == request.getServer_id()){
-				RequestInfo.StatusRequest newStatus = request.getNew_status();
+			if(r.getIdServer() == request.getServerID()){
+				RequestInfo.StatusRequest newStatus = request.getNewStatus();
 				if(newStatus == RequestInfo.StatusRequest.RUNNING &&
 						(r.getStatus() == RequestInfo.StatusRequest.DONE ||
 								r.getStatus() == RequestInfo.StatusRequest.RUNNING)) {
@@ -293,7 +401,7 @@ public class Scheduler implements Runnable{
 					answer.setCode(CODE_ERROR_INVALID_REQUEST_DUPLICATED);
 				}else{
 					answer.setStatus(STATUS_SUCCESS_REQUEST);
-					r.setStatus(request.getNew_status());
+					r.setStatus(request.getNewStatus());
 
 					sendMessageToGroup(new Gson().toJson(request));
 				}
@@ -306,11 +414,6 @@ public class Scheduler implements Runnable{
 			answer.setCode(CODE_ERROR_INVALID_REQUEST_ID_NOT_FOUND);
 		}
 		return answer;
-	}
-
-	public void sendMessageToGroup(String message) {
-		System.out.println("[Scheduler] sending " + message + " to group!" );
-		this.parentServer.sendMessageToGroup(message);
 	}
 
 	public RequestInfo getRequestByID(String requestId) {
@@ -328,8 +431,12 @@ public class Scheduler implements Runnable{
 	public void sendMessageRemoveServerToGroup(int idServer) {
 		sendMessageToGroup(
 				String.format("{\"code\":%d,\"id_servers\":[%d]}",
-						Constants.CODE_REQUEST_DEL_SERVER,
+						Constants.CODE_MESSAGE_REMOVE_SERVER,
 						idServer)
 		);
+	}
+
+	public int getNextServerID() {
+		return this.parentServer.getNextServerID();
 	}
 }

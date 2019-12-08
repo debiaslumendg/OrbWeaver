@@ -12,29 +12,29 @@ public class Constants {
 
     /** Codigo que indica que el mensaje recibido por el Scheduler es para agregar un servidor
     * Codigo que indica que el mensaje recibido por el Servidor es para un servidor agregado por el Scheduler*/
-    public static final int CODE_REQUEST_ADD_SERVER  = 1;
+    public static final int CODE_MESSAGE_ADD_SERVER = 1;
     /** Codigo que indica que el mensaje recibido por el Scheduler es para pedir el servidor para ejecutar un servicio
      * Codigo que indica que el mensaje recibido por el Servidor es para ejecutar un servicio*/
-    public static final int CODE_REQUEST_EXEC_SERVICE  = 2;
+    public static final int CODE_MESSAGE_EXEC_SERVICE = 2;
 
     /** Codigo que indica que el mensaje recibido por el Scheduler es para actualiazr el estado de una request */
-    public static final int CODE_REQUEST_UPDATE_REQUEST = 3;
+    public static final int CODE_MESSAGE_UPDATE_REQUEST = 3;
 
     /** Codigo que indica que el mensaje recibido por el Servidor es para crear una nueva request -- en su lista
      * (aunque no es el scheduler, es por si tiene que ser el scheduler más adelante)*/
-    public static final int CODE_REQUEST_NEW_REQUEST = 4;
+    public static final int CODE_MESSAGE_NEW_REQUEST = 4;
 
     /**
      * Indica que el mensaje recibido es solo para ver si está vivo
      *
      * TODO: Intentar utilizar los acks de TCP
      */
-    public static final int CODE_REQUEST_PING = 5;
+    public static final int CODE_MESSAGE_PING = 5;
 
     /**
      * Indica que el mensaje recibido es para eliminar un servidor del grupo
      */
-    public static final int CODE_REQUEST_DEL_SERVER = 6;
+    public static final int CODE_MESSAGE_REMOVE_SERVER = 6;
 
 
     /** Codigo que indica el estado EXITOSO de la respuesta de un mensaje del Scheduler*/

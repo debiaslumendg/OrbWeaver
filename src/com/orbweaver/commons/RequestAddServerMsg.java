@@ -2,7 +2,7 @@ package com.orbweaver.commons;
 
 
 public class RequestAddServerMsg {
-    private int code = Constants.CODE_REQUEST_ADD_SERVER;
+    private int code = Constants.CODE_MESSAGE_ADD_SERVER;
     private ServerInfo server;
 
     public RequestAddServerMsg(ServerInfo server) {

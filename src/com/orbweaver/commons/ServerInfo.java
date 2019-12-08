@@ -5,25 +5,14 @@ import java.util.List;
 public class ServerInfo {
 
     private int id;
-    private String name;
     private String address;
     private int port;
     private List<ServiceInfo> services;
 
 
-    public ServerInfo(String name, String address, int port, List<ServiceInfo> services) {
-        this.name = name;
-        this.address = address;
+    public ServerInfo(int port, List<ServiceInfo> services) {
         this.port = port;
         this.services = services;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public String getAddress() {
@@ -52,7 +41,7 @@ public class ServerInfo {
 
     @Override
     public String toString() {
-        return "Server( id= " + getId()   +  ", name= " + getName() + " , address = "  + getAddress() +
+        return "Server( id= " + getId()   +  ", address = "  + getAddress() +
                 ", port = "   + getPort() +  ", services = " + getServices() + " ) ";
     }
 

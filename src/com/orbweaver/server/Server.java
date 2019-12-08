@@ -11,8 +11,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.ListIterator;
-import java.util.Vector;
 
 public class Server {
 
@@ -30,11 +28,15 @@ public class Server {
 
     private ArrayList<ServerInfo> servers = new ArrayList<>();
 
+    /*Next id a asignar a un nuevo servidor agregado al grupo*/
+    private int nextServerID = 0;
+
     /**Lista de requests que está manejando el Scheduler
      * Como todos los servidores son a su vez un backup para el scheduler
      * Esta lista de request debe ser actualizada en todos los servidores
      * */
     private ArrayList<RequestInfo> requests = new ArrayList<>() ;
+
 
     private ServerInfo myServerInfo;
 
@@ -133,13 +135,21 @@ public class Server {
                 System.out.println("[Server] Got from Scheduler: ");
                 servers = requestAddServerAnswerMsg.getServers();
                 System.out.println("[Server] \tServers: " + servers);
+                requests = requestAddServerAnswerMsg.getRequests();
+                System.out.println("[Server] \tRequests: " + requests);
 
-                myId = requestAddServerAnswerMsg.getServer_id();
+
+                myId = requestAddServerAnswerMsg.getServerID();
+                nextServerID = myId + 1;
+                System.out.println("[Server] \tMy ID: " + myId);
+
+                System.out.println("[Server] \tNext server ID: " + nextServerID);
+
+                System.out.println("[Server] Added to the Group...");
+
 
                 myServerInfo = getServerByID(myId);
 
-                System.out.println("[Server] \tMy ID: " + myId);
-                System.out.println("[Server] Added to the Group...");
 
                 break;
         }
@@ -164,120 +174,9 @@ public class Server {
         }
 
         return null;
-
-    }
-
-    /**
-     * Envía un mensaje al servidor especificado
-     * Este metodo debería ejecutarlo solo el Scheduler
-     * @param message
-     * @param serverInfo
-     * @return
-     */
-    public boolean sendMessageToServer(String message, ServerInfo serverInfo){
-
-        Socket socket;
-
-        try {
-            socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
-        } catch (IOException e) {
-            System.out.format("[Scheduler] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-
-        DataOutputStream dataOutputStream;
-        try {
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-        } catch (IOException e) {
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-            System.out.format("Error: Cannot open connection to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-        try {
-            dataOutputStream.writeUTF(message);
-            socket.close();
-        } catch (IOException e) {
-            System.out.format("Error: Coudn't  write to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-        return true;
-
-    }
-
-    /**
-     * Envia un mensaje al grupo
-     * - Nuevo servidor
-     * - Request actualizado
-     * --- El unico que deberia llamar esta funcion es el scheduler. syncronized deberia hacer los mensajes ordenados
-     */
-    public synchronized void sendMessageToGroup(String message) {
-
-        Vector<Integer> serversToRemove = new Vector<>();
-
-        ListIterator<ServerInfo> iter = servers.listIterator();
-        ServerInfo serverInfo;
-        while(iter.hasNext()) {
-            serverInfo = iter.next();
-            if(serverInfo.getId() != myServerInfo.getId()) {
-                if(!sendMessageToServer(message, serverInfo)){
-                    serversToRemove.add(serverInfo.getId());
-                    iter.remove();
-                }
-            }
-        }
-
-        if(serversToRemove.size() > 0){
-            sendMessageToGroup(String.format("{\"code\":%d,\"id_servers\":%s}",
-                    Constants.CODE_REQUEST_DEL_SERVER,
-                    new Gson().toJson(serversToRemove.toArray())));
-        }
     }
 
 
-    /**
-     * Agrega un servidor a su lista de miembros.
-     * -    Para agregarse un servidor al grupo se debe comunicar con el coordinador, para nuestro proyecto es el mismo Scheduler.
-     * -    El scheduler lo agrega a su lista de miembros interna y le asigna un ID a él y a sus servicios nuevos que el scheduler no conozca.
-     * -    El scheduler después de agregarlo a su lista interna le envía un mensaje a todos los miembros del grupo, con
-     *      la información del nuevo miembro del grupo para que se actualizen.
-     *      Es necesario que todos los miembros sepan quienes son el resto, por si:
-     *          * Ocurre un error y el scheduler y el scheduler back up mueren, cualquier puede tomar el lugar de scheduler.
-     *              Por lo que necesita la lista de miembros para seleccionar entre ellos el nuevo scheduler.
-     *
-     * @param requestAddServerMsg Informacion del nuevo servidor a agregar
-     * @return ID del nuevo servidor
-     */
-    public synchronized int addServer(RequestAddServerMsg requestAddServerMsg){
-
-        // Se lee el id del anterior servidor para controlar la eliminación y agregación de servidores
-        int newServerID;
-        ServerInfo serverInfo = requestAddServerMsg.getServer();
-
-        if(iAmScheduler) {
-            // TODO : Cambiar la forma en que se maneja la creacion de ids de los servidores
-            newServerID = servers.get(servers.size() - 1).getId() + 1;
-            serverInfo.setId(newServerID);
-        }else{
-            newServerID = serverInfo.getId();
-        }
-
-        if(iAmScheduler) {
-            sendMessageToGroup(new Gson().toJson(requestAddServerMsg));
-        }
-
-        servers.add(serverInfo);
-
-        System.out.format("Added server ID=%d :\n\tAddress - (%s,%d)\n", newServerID, serverInfo.getAddress(), serverInfo.getPort());
-        System.out.format("\tServices %s\n", serverInfo.getServices());
-
-        return newServerID;
-    }
 
     /**
      *
@@ -289,7 +188,7 @@ public class Server {
 
     public void run(){
 
-        myServerInfo = new ServerInfo("manuggz","127.0.0.1",this.serverPort, onRequestServiceToClient.getServicesList());
+        myServerInfo = new ServerInfo(this.serverPort, onRequestServiceToClient.getServicesList());
 
         servers.add(myServerInfo);
 
@@ -298,7 +197,9 @@ public class Server {
             addServerToGroup();
         }else{
             // Si este servidor funcionará como Scheduler establecemos nuestro estado inicial
-            myServerInfo.setId(0);
+            myServerInfo.setId(this.nextServerID);
+            myServerInfo.setAddress(Util.getIPHost());
+            this.nextServerID++;
 
             // Iniciamos el scheduler
             new Thread(new Scheduler(this,schedulerPort)).start();
@@ -415,26 +316,31 @@ public class Server {
         return;
     }
 
-    public static void election(ArrayList<ServerInfo> servers, ServerInfo scheduler)
-    {
+    public static void election(ArrayList<ServerInfo> servers, ServerInfo scheduler) {
         // Process ed = ProcessElection.getElectionInitiator();
-
-        if((ed.getPid()) == scheduler.getPid()) {
+        /*
+        if ((ed.getPid()) == scheduler.getPid()) {
             ServerInfo oldScheduler = scheduler;
             oldScheduler.setDownflag(false);
-            scheduler = (ServerInfo) this.servers.get(ed.getPid()-1);
+            scheduler = (ServerInfo) this.servers.get(ed.getPid() - 1);
             // ProcessElection.setElectionFlag(false);
             scheduler.setCoordinatorFlag(true);
             System.out.println("\nNew Coordinator is : P" + scheduler.getPid());
-        }
-        else {
+        } else {
             System.out.print("\n");
-            for(int i = ed.getPid()+1; i < this.servers.size(); i++) {
+            for (int i = ed.getPid() + 1; i < this.servers.size(); i++) {
                 System.out.println("P" + ed.getPid() + ": Sending message to P" + i);
             }
-            ServerInfo a = (ServerInfo) this.servers.get(ed.getPid()+1);
+            ServerInfo a = (ServerInfo) this.servers.get(ed.getPid() + 1);
 
             // ProcessElection.setElectionInitiator(a);
-        }
+        }*/
+    }
+    public int getNextServerID() {
+        return this.nextServerID;
+    }
+
+    public void setNextServerID(int n) {
+        this.nextServerID = n;
     }
 }

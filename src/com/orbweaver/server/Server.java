@@ -12,6 +12,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 
+import static com.orbweaver.commons.Util.getIPHost;
+
 public class Server {
 
     private int          serverPort     = Constants.DEFAULT_SERVER_PORT;
@@ -138,13 +140,15 @@ public class Server {
                 requests = requestAddServerAnswerMsg.getRequests();
                 System.out.println("[Server] \tRequests: " + requests);
 
-                nextServerID = requestAddServerAnswerMsg.getNextServerID();
-                System.out.println("[Server] \tNext server ID: " + nextServerID);
-
 
                 myId = requestAddServerAnswerMsg.getServer_id();
+                nextServerID = myId + 1;
                 System.out.println("[Server] \tMy ID: " + myId);
+
+                System.out.println("[Server] \tNext server ID: " + nextServerID);
+
                 System.out.println("[Server] Added to the Group...");
+
 
                 myServerInfo = getServerByID(myId);
 
@@ -172,7 +176,6 @@ public class Server {
         }
 
         return null;
-
     }
 
 
@@ -187,7 +190,7 @@ public class Server {
 
     public void run(){
 
-        myServerInfo = new ServerInfo("manuggz","127.0.0.1",this.serverPort, onRequestServiceToClient.getServicesList());
+        myServerInfo = new ServerInfo(this.serverPort, onRequestServiceToClient.getServicesList());
 
         servers.add(myServerInfo);
 
@@ -197,6 +200,7 @@ public class Server {
         }else{
             // Si este servidor funcionará como Scheduler establecemos nuestro estado inicial
             myServerInfo.setId(this.nextServerID);
+            myServerInfo.setAddress(Util.getIPHost());
             this.nextServerID++;
 
             // Iniciamos el scheduler

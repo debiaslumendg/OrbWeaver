@@ -98,17 +98,21 @@ public class SchedulerWorker implements Runnable {
         // Obtenemos el código, esto nos dice de qué va el mensaje.
         int code = jsonObjectMessage.get("code").getAsInt();
 
+        ServerInfo serverInfo;
         switch (code){
             case Constants.CODE_REQUEST_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
+
+                serverInfo = requestAddServerMsg.getServer();
+                serverInfo.setAddress(clientSocket.getInetAddress().getHostAddress());
 
                 int newServerID = scheduler.addServer(requestAddServerMsg);
 
                 RequestAddServerAnswerMsg requestAddServerAnswerMsg = new RequestAddServerAnswerMsg(
                         newServerID,
                         scheduler.getServers(),
-                        scheduler.getRequests(),
-                        scheduler.getNextServerID());
+                        scheduler.getRequests()
+                );
 
                 content = gson.toJson(requestAddServerAnswerMsg);
 
@@ -121,7 +125,7 @@ public class SchedulerWorker implements Runnable {
 
                     RequestInfo requestInfo = this.scheduler.getRequestByID(requestServiceMsg.getIdRequest());
 
-                    ServerInfo serverInfo =  this.scheduler.getServerByID(requestInfo.getId_server());
+                    serverInfo = this.scheduler.getServerByID(requestInfo.getId_server());
 
                     if(serverInfo != null && !this.scheduler.pingServer(serverInfo)){
                         // TODO: El mismo problema de los ID's unicos

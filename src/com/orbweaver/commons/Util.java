@@ -94,14 +94,17 @@ public class Util {
         return defaultValue;
     }
 
-    public static void printIPHost(){
+
+    public static String getIPHost(){
         try(final DatagramSocket socket = new DatagramSocket()){
             socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
             String ip = socket.getLocalAddress().getHostAddress();
-            System.out.println("IP Address:- " + ip);
+            return ip;
         } catch (UnknownHostException | SocketException e) {
             e.printStackTrace();
         }
+
+        return "";
     }
 
     public static String convertInputStreamToString(InputStream inputStream) throws IOException {

@@ -12,10 +12,13 @@ public class RequestAddServerAnswerMsg {
     private ArrayList<ServerInfo> servers;
     private ArrayList<RequestInfo> requests;
 
-    public RequestAddServerAnswerMsg(int server_id, ArrayList<ServerInfo> servers, ArrayList<RequestInfo> requests) {
+    private int next_id;
+
+    public RequestAddServerAnswerMsg(int server_id, ArrayList<ServerInfo> servers, ArrayList<RequestInfo> requests, int next_id) {
         this.server_id = server_id;
         this.servers = servers;
         this.requests = requests;
+        this.next_id = next_id;
     }
 
 
@@ -42,4 +45,13 @@ public class RequestAddServerAnswerMsg {
     public void setRequests(ArrayList<RequestInfo> requests) {
         this.requests = requests;
     }
+
+    public int getNextServerID() {
+        return next_id;
+    }
+
+    public void setNextServerID(int next_id) {
+        this.next_id = next_id;
+    }
+
 }

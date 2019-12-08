@@ -107,8 +107,8 @@ public class SchedulerWorker implements Runnable {
                 RequestAddServerAnswerMsg requestAddServerAnswerMsg = new RequestAddServerAnswerMsg(
                         newServerID,
                         scheduler.getServers(),
-                        scheduler.getRequests()
-                );
+                        scheduler.getRequests(),
+                        scheduler.getNextServerID());
 
                 content = gson.toJson(requestAddServerAnswerMsg);
 

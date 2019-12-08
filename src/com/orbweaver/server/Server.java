@@ -11,8 +11,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.ListIterator;
-import java.util.Vector;
 
 public class Server {
 
@@ -30,11 +28,15 @@ public class Server {
 
     private ArrayList<ServerInfo> servers = new ArrayList<>();
 
+    /*Next id a asignar a un nuevo servidor agregado al grupo*/
+    private int nextServerID = 0;
+
     /**Lista de requests que está manejando el Scheduler
      * Como todos los servidores son a su vez un backup para el scheduler
      * Esta lista de request debe ser actualizada en todos los servidores
      * */
     private ArrayList<RequestInfo> requests = new ArrayList<>() ;
+
 
     private ServerInfo myServerInfo;
 
@@ -136,12 +138,16 @@ public class Server {
                 requests = requestAddServerAnswerMsg.getRequests();
                 System.out.println("[Server] \tRequests: " + requests);
 
+                nextServerID = requestAddServerAnswerMsg.getNextServerID();
+                System.out.println("[Server] \tNext server ID: " + nextServerID);
+
+
                 myId = requestAddServerAnswerMsg.getServer_id();
+                System.out.println("[Server] \tMy ID: " + myId);
+                System.out.println("[Server] Added to the Group...");
 
                 myServerInfo = getServerByID(myId);
 
-                System.out.println("[Server] \tMy ID: " + myId);
-                System.out.println("[Server] Added to the Group...");
 
                 break;
         }
@@ -190,7 +196,8 @@ public class Server {
             addServerToGroup();
         }else{
             // Si este servidor funcionará como Scheduler establecemos nuestro estado inicial
-            myServerInfo.setId(0);
+            myServerInfo.setId(this.nextServerID);
+            this.nextServerID++;
 
             // Iniciamos el scheduler
             new Thread(new Scheduler(this,schedulerPort)).start();
@@ -304,5 +311,13 @@ public class Server {
             }
         }
         return;
+    }
+
+    public int getNextServerID() {
+        return this.nextServerID;
+    }
+
+    public void setNextServerID(int n) {
+        this.nextServerID = n;
     }
 }

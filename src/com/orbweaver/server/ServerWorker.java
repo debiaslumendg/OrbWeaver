@@ -6,8 +6,6 @@ import com.orbweaver.commons.*;
 import java.io.*;
 import java.net.Socket;
 
-import static com.orbweaver.commons.Constants.STATUS_SUCCESS_REQUEST;
-
 public class ServerWorker implements Runnable{
 
     protected Socket clientSocket = null;
@@ -68,7 +66,7 @@ public class ServerWorker implements Runnable{
             case Constants.CODE_REQUEST_ADD_SERVER:
                 RequestAddServerMsg requestAddServerMsg = gson.fromJson(content, RequestAddServerMsg.class);
                 server.getServers().add(requestAddServerMsg.getServer());
-
+                this.server.setNextServerID(server.getNextServerID() + 1);
                 break;
             // Mensaje de difusión recibido :Eliminar servidor
             case Constants.CODE_REQUEST_DEL_SERVER:

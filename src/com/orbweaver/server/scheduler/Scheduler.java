@@ -282,8 +282,9 @@ public class Scheduler implements Runnable{
 
         // TODO : Cambiar la forma en que se maneja la creacion de ids de los servidores
         ArrayList<ServerInfo> servers = this.getServers();
-        newServerID = servers.get(servers.size() - 1).getId() + 1;
+        newServerID = getNextServerID();
         serverInfo.setId(newServerID);
+		setNextID(newServerID + 1);
 
         sendMessageToGroup(new Gson().toJson(requestAddServerMsg));
 
@@ -294,6 +295,10 @@ public class Scheduler implements Runnable{
 
         return newServerID;
     }
+
+	private void setNextID(int n) {
+		this.parentServer.setNextServerID(n);
+	}
 
 	public boolean pingServer(ServerInfo server) {
 
@@ -429,5 +434,9 @@ public class Scheduler implements Runnable{
 						Constants.CODE_REQUEST_DEL_SERVER,
 						idServer)
 		);
+	}
+
+	public int getNextServerID() {
+		return this.parentServer.getNextServerID();
 	}
 }

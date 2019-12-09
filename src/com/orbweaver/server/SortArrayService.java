@@ -37,19 +37,10 @@ public class SortArrayService implements ServiceInterfaz{
         }
 
         JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
-        String[] array = jsonObjectMessage.get("array").getAsString().split("[ ]");
-        int[] sortedArray = Arrays.stream(array[0].substring(1, array[0].length()-1).split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
-        // int[] sortedArray = new int[] {1,2,6,0,9};
-
-        for(int i=0; i < sortedArray.length; i++){
-            System.out.printf("unsorted : %s\n",sortedArray[i]);
-        }
+        String array = jsonObjectMessage.get("array").getAsString();
+        int[] sortedArray = Arrays.stream(array.substring(1, array.length()-1).split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
 
         Arrays.sort(sortedArray);
-
-        for(int i=0; i < sortedArray.length; i++){
-            System.out.printf("sorted : %s\n",sortedArray[i]);
-        }
 
         content = String.format("{\"sorted_array\":\"%s\"}",Arrays.toString(sortedArray));
 

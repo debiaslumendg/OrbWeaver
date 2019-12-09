@@ -58,15 +58,15 @@ public class SortArray implements OnServiceArgumentsToServer {
         // Parseamos el mensaje a JSON
         JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
 
-        System.out.format("Sorted array %s.\n",(jsonObjectMessage.get("sorted_array")));
+        System.out.format("Sorted array %s.\n",(jsonObjectMessage.get("sorted_array").getAsString()));
     }
 
 
     /**
      * Usage
-     *  $> sortArray <STRING>  [--hosts|-hs <NUMBER>] [--ports|-ps <NUMBER>]
+     *  $> sortArray <ARRAY>  [--hosts|-hs <NUMBER>] [--ports|-ps <NUMBER>]
      *
-     *      STRING   : Obligatorio, arreglo a ordenar
+     *      ARRAY   : Obligatorio, arreglo a ordenar
      *      --hosts  | -hs  : Address del coordinador (Scheduler) , opcional se usará el de un archivo de configuración
      *      --ports  | -ps  : Puerto del coordinador (Scheduler), opcional se usará el de un archivo de configuración
      *
@@ -92,21 +92,12 @@ public class SortArray implements OnServiceArgumentsToServer {
                     i++;
                 }else {
                     String[] arr = args[i].split("[ ]");
-                    // arrayToSort = new int[arr.length];
                     arrayToSort = Arrays.stream(arr[0].substring(1, arr[0].length()-1).split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
-
-                    for (int j = 0; j < arrayToSort.length; j++){
-                    //     System.out.println(arr[j].replace("[", ""));
-                    //     System.out.println(arr.length);
-                        System.out.printf("number %d\n", arrayToSort[j]);
-                    //     arrayToSort[j] = Integer.parseInt(args[i].replace("[", ""));
-                    }
                     anyError = false;
                 }
             }
         }else{
-            System.out.println("Usage:sortArray  <STRING> [--hosts|-hs <NUMBER>] [--ports|-ps <NUMBER>]");
-            System.out.println("Array format: \"1 2 3 4 5\"");
+            System.out.println("Usage:sortArray  <ARRAY> [--hosts|-hs <NUMBER>] [--ports|-ps <NUMBER>]");
             System.out.println();
             System.exit(-1);
         }

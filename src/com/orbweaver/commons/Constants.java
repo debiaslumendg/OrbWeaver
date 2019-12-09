@@ -46,6 +46,15 @@ public class Constants {
      * */
     public static final int CODE_MESSAGE_GET_MEMBERS_LIST = 8;
 
+    /**
+     * Indica que el mensaje recibido por el Servidor es para que inicie una eleccion
+     * */
+    public static final int CODE_MESSAGE_ELECCION = 8;
+    /**
+     * Indica que el mensaje recibido por el Servidor es para indicarle de quién es el coordinador
+     * */
+    public static final int CODE_MESSAGE_COORDINATOR = 9;
+
     /** Codigo que indica el estado EXITOSO de la respuesta de un mensaje del Scheduler*/
     public static final int STATUS_SUCCESS_REQUEST = 2;
 
@@ -67,4 +76,6 @@ public class Constants {
     /** Codigo de error que indica que el servicio solicitado no tiene un servidor disponible para su ejecucion*/
     public static final int CODE_ERROR_SOLICITED_SERVICE_NOT_SERVER_FOUND = 5 ;
 
+    /**Codigo de error que indica que el scheduler no está disponible */
+    public static final int CODE_ERROR_SCHEDULER_NOT_AVAILABLE = 6;
 }

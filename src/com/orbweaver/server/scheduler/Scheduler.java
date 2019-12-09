@@ -165,48 +165,6 @@ public class Scheduler implements Runnable{
 	public ArrayList<RequestInfo> getRequests(){
 		return this.parentServer.getRequests();
 	}
-    /**
-     * Envía un mensaje al servidor especificado
-     * Este metodo debería ejecutarlo solo el Scheduler
-     * @param message
-     * @param serverInfo
-     * @return
-     */
-    public boolean sendMessageToServer(String message, ServerInfo serverInfo){
-
-        Socket socket;
-
-        try {
-            socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
-        } catch (IOException e) {
-            System.out.format("[Scheduler] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-
-        DataOutputStream dataOutputStream;
-        try {
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-        } catch (IOException e) {
-            try {
-                socket.close();
-            } catch (IOException ignored) {
-            }
-            System.out.format("Error: Cannot open connection to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-        try {
-            dataOutputStream.writeUTF(message);
-            socket.close();
-        } catch (IOException e) {
-            System.out.format("Error: Coudn't  write to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
-            return false;
-        }
-
-        return true;
-
-    }
 
     /**
      * Envia un mensaje al grupo
@@ -225,7 +183,7 @@ public class Scheduler implements Runnable{
 
             // Envia el mensaje a todos menos a él mismo
             if(serverInfo.getId() != this.parentServer.getId()) {
-                if(!sendMessageToServer(message, serverInfo)){
+                if(!this.parentServer.sendMessageToServer(message, serverInfo)){
                     serversToRemove.add(serverInfo.getId());
                     iter.remove();
                 }
@@ -278,15 +236,7 @@ public class Scheduler implements Runnable{
 	}
 
 	public boolean pingServer(ServerInfo server) {
-
-		if(sendMessageToServer(String.format(
-				"{\"code\":%d}", Constants.CODE_MESSAGE_PING
-				),server)){
-			return true;
-		}else{
-			System.out.println(server + " is dead!");
-			return false;
-		}
+		return this.parentServer.pingServer(server);
 	}
 
 	/**

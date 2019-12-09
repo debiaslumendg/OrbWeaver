@@ -6,7 +6,7 @@ import com.orbweaver.commons.*;
 import java.io.*;
 import java.net.Socket;
 
-import static com.orbweaver.commons.Constants.CODE_MESSAGE_WHO_IS_SCHEDULER;
+import static com.orbweaver.commons.Constants.*;
 
 public class ServerWorker implements Runnable{
 
@@ -68,8 +68,12 @@ public class ServerWorker implements Runnable{
             // Mensaje preguntando quién es el Scheduler
             case CODE_MESSAGE_WHO_IS_SCHEDULER:
                 ServerInfo scheduler = new ServerInfo();
-                scheduler.setAddress(this.server.geteCoordinatorAddress());
+                scheduler.setAddress(this.server.getCoordinatorAddress());
                 scheduler.setPort(this.server.getCoordinatorPort());
+
+                if(!this.server.pingServer(scheduler)){
+                    this.server.startEleccion();
+                }
                 // Enviamos el mensaje con el scheduler
                 content = gson.toJson(scheduler);
                 try {
@@ -95,7 +99,7 @@ public class ServerWorker implements Runnable{
             case Constants.CODE_MESSAGE_NEW_REQUEST:
                 RequestNewRequestMsg newRequestMsg = gson.fromJson(content, RequestNewRequestMsg.class);
 
-                this.server.getRequests().add(newRequestMsg.getRequestInfo());
+                this.server.addRequest(newRequestMsg.getRequestInfo());
                 break;
 
             // Mensaje de difusión recibido : Actualizar estado de request
@@ -105,6 +109,30 @@ public class ServerWorker implements Runnable{
 
                 RequestInfo request = this.server.getRequestByID(requestUpdate.getRequestID());
                 request.setStatus(requestUpdate.getNewStatus());
+                break;
+
+            case Constants.CODE_MESSAGE_ELECCION:
+                if(this.server.isScheduler()){
+                    ServerInfo serverInfo = new ServerInfo();
+                    serverInfo.setAddress(this.server.getCoordinatorAddress());
+                    serverInfo.setPort(this.server.getCoordinatorPort());
+
+                    content = String.format("{code:%d,scheduler:%s}",CODE_MESSAGE_COORDINATOR,
+                            new Gson().toJson(serverInfo));
+                    try {
+                        dataOutputStream.writeUTF(content);
+                    } catch (IOException e) {
+                        System.out.format("Error: Cannot write JSON to ( %s , %d)\n",
+                                clientSocket.getInetAddress().getHostName(),clientSocket.getPort());
+                    }
+                }else{
+                    this.server.startEleccion();
+                }
+                break;
+            case CODE_MESSAGE_COORDINATOR:
+                ServerInfo serverInfo = gson.fromJson(jsonObjectMessage.get("scheduler"),ServerInfo.class);
+                this.server.setScheduler(serverInfo);
+                this.server.setEleccionStarted(false);
                 break;
             // Mensaje recibido: "Ping" . ¿Are you alive?
             case Constants.CODE_MESSAGE_PING:
@@ -124,21 +152,30 @@ public class ServerWorker implements Runnable{
                 // Nos comunicamos con el scheduler para actualizar el estado de la peticion
                 // El scheduler hace la difusión del cambio de estado de la request a RUNNING a todos los demás miembros
                 // del grupo
-                RequestAnswerMsg updateRequest = updateStatusRequestScheduler(
+                RequestAnswerMsg updateRequest = this.server.updateStatusRequestScheduler(
                         requestServiceMsg.getIdRequest(),
                         RequestInfo.StatusRequest.RUNNING
                 );
 
-                // Establece el estado de la request en mi lista
-                myrequest.setStatus(RequestInfo.StatusRequest.RUNNING);
+                if(updateRequest == null) {
+                    this.server.startEleccion();
+                    updateRequest = new RequestAnswerMsg();
+                    updateRequest.setCode(Constants.CODE_ERROR_SCHEDULER_NOT_AVAILABLE);
+                    updateRequest.setStatus(STATUS_ERROR_REQUEST);
+                }
 
-                // Enviamos el mensaje de respuesta -- errror -success
+                if(updateRequest.isSuccess()) {
+                    // Establece el estado de la request en mi lista
+                    myrequest.setStatus(RequestInfo.StatusRequest.RUNNING);
+                }
+
+                // Enviamos el mensaje de respuesta -- errror -success al Cliente
                 content = gson.toJson(updateRequest);
                 try {
                     dataOutputStream.writeUTF(content);
                 } catch (IOException e) {
                     throw new RuntimeException(
-                            String.format("Error: Cannot write JSON to Server ( %s , %d)",
+                            String.format("Error: Cannot write JSON to Client ( %s , %d)",
                                     clientSocket.getInetAddress().getHostName(),clientSocket.getPort())
                             , e);
                 }
@@ -149,8 +186,12 @@ public class ServerWorker implements Runnable{
 
                     service.handleClient(clientSocket, dataInputStream, dataOutputStream);
 
-                    updateStatusRequestScheduler(requestServiceMsg.getIdRequest(), RequestInfo.StatusRequest.DONE);
-                    myrequest.setStatus(RequestInfo.StatusRequest.DONE);
+                    updateRequest = this.server.updateStatusRequestScheduler(requestServiceMsg.getIdRequest(), RequestInfo.StatusRequest.DONE);
+                    if(updateRequest == null) {
+                        this.server.startEleccion();
+                        this.server.addRequestIdToCompleteWhenSchedulerAvailable(requestServiceMsg.getIdRequest());
+                    }else if(updateRequest.isSuccess())
+                        myrequest.setStatus(RequestInfo.StatusRequest.DONE);
                 }
                 break;
 
@@ -164,80 +205,5 @@ public class ServerWorker implements Runnable{
         }
     }
 
-    /**
-     * Se comunica con el scheduler para actualizar el estado de una request
-     * Scheduler responde Error:
-     *  - Si la request es inválida
-     *  - Si la request ya está resuelta
-     *  Sino:
-     *  - Si la request es válida , establece el servidor como ejecutandola
-     */
-    private RequestAnswerMsg updateStatusRequestScheduler(String idRequest, RequestInfo.StatusRequest newStatus) {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        Socket socket;
-
-        try {
-            socket = new Socket(this.server.geteCoordinatorAddress(),this.server.getCoordinatorPort());
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot connect to Scheduler ( %s , %d)",
-                            this.server.geteCoordinatorAddress(), this.server.getCoordinatorPort()), e);
-        }
-
-        DataInputStream dataInputStream;
-        DataOutputStream dataOutputStream;
-
-        String content;
-
-
-        // Obtenemos el contenido del mensaje del cliente
-        try{
-            dataInputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-            dataOutputStream = new DataOutputStream(socket.getOutputStream());
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot connect to Scheduler ( %s , %d)",
-                            this.server.geteCoordinatorAddress(), this.server.getCoordinatorPort()), e);
-        }
-
-        RequestUpdateRequestMsg requestUpdateRequestMsg = new RequestUpdateRequestMsg(
-                this.server.getId(),
-                idRequest,
-                newStatus
-        );
-        content = gson.toJson(requestUpdateRequestMsg);
-        System.out.println("[Server] Updating request to Scheduler : " + content);
-
-        try {
-            dataOutputStream.writeUTF(content);
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
-                            socket.getInetAddress().getHostName(),socket.getPort())
-                    , e);
-        }
-
-        try {
-            content = dataInputStream.readUTF();
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("[Server] Error: Cannot read JSON from Scheduler ( %s , %d)",
-                            this.server.geteCoordinatorAddress(), this.server.getCoordinatorPort()), e);
-        }
-
-        System.out.println("[Server] Updating request to Scheduler answer : " + content);
-        RequestAnswerMsg answer = gson.fromJson(content, RequestAnswerMsg.class);
-
-        try{
-            dataInputStream.close();
-            dataOutputStream.close();
-        } catch (IOException e) {
-            //report exception somewhere.
-            e.printStackTrace();
-        }
-
-        return answer;
-
-    }
 
 }

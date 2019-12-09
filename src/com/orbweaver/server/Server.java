@@ -1,6 +1,7 @@
 package com.orbweaver.server;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.orbweaver.commons.*;
@@ -10,7 +11,10 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.*;
+
+import static com.orbweaver.commons.Constants.CODE_MESSAGE_COORDINATOR;
+import static com.orbweaver.commons.Constants.CODE_MESSAGE_ELECCION;
 
 public class Server {
 
@@ -45,6 +49,14 @@ public class Server {
 
     private OnRequestServiceToClient onRequestServiceToClient;
 
+    // Indica si se ha iniciado una eleccion para grandulon
+    private boolean eleccionStarted = false;
+    // Indica el tiempo en el que se ha iniciado la eleccion
+    private long timeMsEleccionStarted;
+
+    // Cuando el scheduler vuelva a estar disponible se tienen que establecer como hecho las request que tienen estos ids
+    private LinkedList<String> listRequestIdToCompleteWhenSchedulerAvailable = new LinkedList<String>() ;
+
     public Server(int serverPort,String coordinatorAddress, int coordinatorPort,int schedulerPort,boolean isCheduler){
         this.serverPort = serverPort;
         this.coordinatorAddress = coordinatorAddress;
@@ -55,7 +67,7 @@ public class Server {
 
     }
 
-    public String geteCoordinatorAddress(){
+    public String getCoordinatorAddress(){
         return this.coordinatorAddress;
     }
     public int getCoordinatorPort(){
@@ -176,8 +188,59 @@ public class Server {
         return null;
     }
 
+    /**
+     * Envía un mensaje al servidor especificado
+     * Este metodo debería ejecutarlo solo el Scheduler
+     * @param message
+     * @param serverInfo
+     * @return
+     */
+    public boolean sendMessageToServer(String message, ServerInfo serverInfo){
+
+        Socket socket;
+
+        try {
+            socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
+        } catch (IOException e) {
+            System.out.format("[Server] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
+        }
 
 
+        DataOutputStream dataOutputStream;
+        try {
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        } catch (IOException e) {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+            System.out.format("Error: Cannot open connection to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
+        }
+
+        try {
+            dataOutputStream.writeUTF(message);
+            socket.close();
+        } catch (IOException e) {
+            System.out.format("Error: Coudn't  write to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            return false;
+        }
+
+        return true;
+
+    }
+
+    public boolean pingServer(ServerInfo server) {
+
+        if (sendMessageToServer(String.format(
+                "{\"code\":%d}", Constants.CODE_MESSAGE_PING
+        ), server)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
     /**
      *
      * @return lista de servidores miembros del grupo
@@ -200,12 +263,7 @@ public class Server {
             myServerInfo.setId(this.nextServerID);
             myServerInfo.setAddress(Util.getIPHost());
             this.nextServerID++;
-
-            // Iniciamos el scheduler
-            new Thread(new Scheduler(this,schedulerPort)).start();
-
-            // TODO: Falta el proceso automático de elección del siguiente Scheduler
-            // Si muere se selecciona otro Scheduler con el algoritmo grandulon
+            setAsScheduler();
         }
 
         openServerSocket();
@@ -316,31 +374,173 @@ public class Server {
         return;
     }
 
-    public static void election(ArrayList<ServerInfo> servers, ServerInfo scheduler) {
-        // Process ed = ProcessElection.getElectionInitiator();
-        /*
-        if ((ed.getPid()) == scheduler.getPid()) {
-            ServerInfo oldScheduler = scheduler;
-            oldScheduler.setDownflag(false);
-            scheduler = (ServerInfo) this.servers.get(ed.getPid() - 1);
-            // ProcessElection.setElectionFlag(false);
-            scheduler.setCoordinatorFlag(true);
-            System.out.println("\nNew Coordinator is : P" + scheduler.getPid());
-        } else {
-            System.out.print("\n");
-            for (int i = ed.getPid() + 1; i < this.servers.size(); i++) {
-                System.out.println("P" + ed.getPid() + ": Sending message to P" + i);
-            }
-            ServerInfo a = (ServerInfo) this.servers.get(ed.getPid() + 1);
-
-            // ProcessElection.setElectionInitiator(a);
-        }*/
-    }
     public int getNextServerID() {
         return this.nextServerID;
     }
 
     public void setNextServerID(int n) {
         this.nextServerID = n;
+    }
+
+    public void setAsScheduler() {
+
+        this.iAmScheduler = true;
+
+        // Iniciamos el scheduler
+        new Thread(new Scheduler(this,schedulerPort)).start();
+    }
+
+    public void setEleccionStarted(boolean started) {
+        this.eleccionStarted = started;
+    }
+
+    public boolean isEleccionStarted() {
+        return eleccionStarted;
+    }
+
+    public void setTimeMsEleccionStarted(long currentTimeMillis) {
+        this.timeMsEleccionStarted = currentTimeMillis;
+    }
+
+    public long getTimeMsEleccionStarted() {
+        return timeMsEleccionStarted;
+    }
+
+    public boolean isScheduler() {
+        return iAmScheduler;
+    }
+
+    public void setScheduler(ServerInfo serverInfo) {
+        this.coordinatorAddress = serverInfo.getAddress();
+        this.schedulerPort = serverInfo.getPort();
+    }
+
+    public synchronized void addRequestIdToCompleteWhenSchedulerAvailable(String requestServiceMsg) {
+        listRequestIdToCompleteWhenSchedulerAvailable.add(requestServiceMsg);
+    }
+    /**
+     * Se comunica con el scheduler para actualizar el estado de una request
+     * Scheduler responde Error:
+     *  - Si la request es inválida
+     *  - Si la request ya está resuelta
+     *  Sino:
+     *  - Si la request es válida , establece el servidor como ejecutandola
+     */
+    public RequestAnswerMsg updateStatusRequestScheduler(String idRequest, RequestInfo.StatusRequest newStatus) {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Socket socket;
+
+        try {
+            socket = new Socket(getCoordinatorAddress(),getCoordinatorPort());
+        } catch (IOException e) {
+            System.out.format("Error: Cannot connect to Scheduler ( %s , %d)\n",
+                    getCoordinatorAddress(), getCoordinatorPort());
+            return null;
+        }
+
+        DataInputStream dataInputStream;
+        DataOutputStream dataOutputStream;
+
+        String content;
+
+
+        // Obtenemos el contenido del mensaje del cliente
+        try{
+            dataInputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+            dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        } catch (IOException e) {
+            System.out.format("Error: Cannot connect to Scheduler ( %s , %d)\n",
+                    getCoordinatorAddress(), getCoordinatorPort());
+            return null;
+        }
+
+        RequestUpdateRequestMsg requestUpdateRequestMsg = new RequestUpdateRequestMsg(
+                getId(),
+                idRequest,
+                newStatus
+        );
+        content = gson.toJson(requestUpdateRequestMsg);
+        System.out.println("[Server] Updating request to Scheduler : " + content);
+
+        try {
+            dataOutputStream.writeUTF(content);
+        } catch (IOException e) {
+            System.out.format("Error: Cannot write JSON to Server ( %s , %d)\n",
+                    socket.getInetAddress().getHostName(),socket.getPort());
+            return null;
+        }
+
+        try {
+            content = dataInputStream.readUTF();
+        } catch (IOException e) {
+            System.out.format("[Server] Error: Cannot read JSON from Scheduler ( %s , %d)\n",
+                    getCoordinatorAddress(), getCoordinatorPort());
+            return null;
+        }
+
+        System.out.println("[Server] Updating request to Scheduler answer : " + content);
+        RequestAnswerMsg answer = gson.fromJson(content, RequestAnswerMsg.class);
+
+        try{
+            dataInputStream.close();
+            dataOutputStream.close();
+        } catch (IOException e) {
+            //report exception somewhere.
+            e.printStackTrace();
+        }
+
+        return answer;
+
+    }
+
+    public void triggerSavedRequestUpdates() {
+        RequestAnswerMsg updateRequest;
+        while(!listRequestIdToCompleteWhenSchedulerAvailable.isEmpty()){
+            String requestID = listRequestIdToCompleteWhenSchedulerAvailable.remove();
+            updateRequest = updateStatusRequestScheduler(requestID, RequestInfo.StatusRequest.DONE);
+            if(updateRequest == null) {
+                startEleccion();
+                addRequestIdToCompleteWhenSchedulerAvailable(requestID);
+            }else if(updateRequest.isSuccess()) {
+                RequestInfo myrequest = getRequestByID(requestID);
+                myrequest.setStatus(RequestInfo.StatusRequest.DONE);
+            }
+        }
+    }
+    /**
+     * Le envía un mensaje a todos los miembros del grupo con ID mayor que él que inicien la eleccion
+     */
+    public void startEleccion() {
+
+        if(isEleccionStarted() && System.currentTimeMillis() < getTimeMsEleccionStarted())return;
+
+        setEleccionStarted(true);
+        setTimeMsEleccionStarted(System.currentTimeMillis());
+
+        boolean anyResponse = false;
+        for (ServerInfo serverInfo:getServers()) {
+            if(serverInfo.getId() > getId()) {
+                if(sendMessageToServer(String.format("{code:%d}", CODE_MESSAGE_ELECCION), serverInfo)){
+                    anyResponse = true;
+                }
+            }
+        }
+        if(!anyResponse){
+            String myServerInfo = new Gson().toJson(getServerByID(getId()));
+            setAsScheduler();
+            for (ServerInfo serverInfo:getServers()) {
+                if(serverInfo.getId() < getId()) {
+                    sendMessageToServer(String.format("{code:%d,scheduler:%s}",CODE_MESSAGE_COORDINATOR,
+                            myServerInfo),serverInfo);
+                    triggerSavedRequestUpdates();
+                }
+            }
+            setEleccionStarted(false);
+        }
+    }
+
+
+    public void addRequest(RequestInfo requestInfo) {
+        this.requests.add(requestInfo);
     }
 }

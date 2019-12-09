@@ -57,8 +57,6 @@ public class EsPrimo implements OnServiceArgumentsToServer {
         // Parseamos el mensaje a JSON
         JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
 
-        System.out.println("[Server] " + jsonObjectMessage);
-
         System.out.format("Number '%d' %ses primo.\n",this.ncheck,(jsonObjectMessage.get("is_prime").getAsInt() == 1)?"":"no ");
     }
 

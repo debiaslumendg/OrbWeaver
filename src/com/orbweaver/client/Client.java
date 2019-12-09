@@ -50,14 +50,13 @@ public class Client implements Runnable {
     public RequestServiceAnswerMsg getRequestScheduler(String oldRequestId){
 
         RequestServiceAnswerMsg requestServiceAnswerMsg = null;
-        System.out.format("Connecting to Scheduler(%s,%d)\n",this.addressScheduler,this.portScheduler);
+        //System.out.format("Connecting to Scheduler(%s,%d)\n",this.addressScheduler,this.portScheduler);
 
         Socket socketScheduler = null;
 
         try {
             socketScheduler = new Socket(this.addressScheduler,this.portScheduler);
-            System.out.format("Connected to Scheduler ( %s , %d)\n",
-                    this.addressScheduler,this.portScheduler);
+            //System.out.format("Connected to Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
         } catch (IOException e) {
             System.out.format("Error: Cannot connect to Scheduler ( %s , %d)\n",
                             this.addressScheduler,this.portScheduler);
@@ -111,11 +110,11 @@ public class Client implements Runnable {
 
         switch (requestServiceAnswerMsg.getStatus()){
             case Constants.STATUS_SUCCESS_REQUEST:
-                System.out.println("[Server] Got from Scheduler: ");
+                //System.out.println("[Server] Got from Scheduler: ");
                 String requestId = requestServiceAnswerMsg.getRequestId();
-                System.out.println("[Server] \trequestId: " + requestId);
+                //System.out.println("[Server] \trequestId: " + requestId);
                 ServerInfo serverInfo = requestServiceAnswerMsg.getServerInfo();
-                System.out.println("[Server] \tserverInfo: " + serverInfo);
+                //System.out.println("[Server] \tserverInfo: " + serverInfo);
 
                 break;
             case STATUS_ERROR_REQUEST:
@@ -136,8 +135,6 @@ public class Client implements Runnable {
     /**
      * Se comunica con el Servidor para enviarle la request de servicio
      *
-     * TODO: Falta manejo de errores así como en todo el programa por eso no unifico todavía el código parecido para los
-     *      exception ya que cada exception se puede manejar distinto dependiendo de la clase y mensaje
      * @return
      */
     private boolean sendRequestToServer(ServerInfo serverInfo, String requestId){
@@ -176,8 +173,7 @@ public class Client implements Runnable {
         requestServiceMsg.setIdRequest(requestId);
         content = gson.toJson(requestServiceMsg);
 
-        System.out.format("[Client] Sending " + content + " to the Server (%s, %d)\n",
-                serverInfo.getAddress(),serverInfo.getPort());
+        //System.out.format("[Client] Sending " + content + " to the Server (%s, %d)\n",serverInfo.getAddress(),serverInfo.getPort());
 
         try {
             dataOutputStream.writeUTF(content);
@@ -208,7 +204,7 @@ public class Client implements Runnable {
             return false;
         }
 
-        System.out.println("[Client] Received from Server" + content);
+        //System.out.println("[Client] Received from Server" + content);
 
         RequestAnswerMsg requestAnswerMsg = gson.fromJson(content, RequestAnswerMsg.class);
 
@@ -293,7 +289,7 @@ public class Client implements Runnable {
             e.printStackTrace();
             return;
         }
-        printWScheduler.printf("%s %d", this.addressScheduler, this.portScheduler);
+        printWScheduler.printf("%s %d\n", this.addressScheduler, this.portScheduler);
         printWScheduler.close();
 
         if(members == null) return;
@@ -308,7 +304,7 @@ public class Client implements Runnable {
         }
 
         for(ServerInfo serverInfo : members){
-            printWMembers.printf("%s %d",serverInfo.getAddress(),serverInfo.getPort());
+            printWMembers.printf("%s %d\n",serverInfo.getAddress(),serverInfo.getPort());
         }
         printWMembers.close();
 
@@ -316,16 +312,17 @@ public class Client implements Runnable {
 
     private void updateMembersList() {
 
-        System.out.format("Connecting to Scheduler(%s,%d)\n",this.addressScheduler,this.portScheduler);
+        //System.out.format("Connecting to Scheduler(%s,%d)\n",this.addressScheduler,this.portScheduler);
 
         Socket socketScheduler = null;
 
         try {
             socketScheduler = new Socket(this.addressScheduler,this.portScheduler);
-            System.out.format("Connected to Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
+            //System.out.format("Connected to Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
         } catch (IOException e) {
-            System.out.format("Error: Cannot connect to Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
-            System.exit(1);
+            //System.out.format("Error: Cannot connect to Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
+            //System.exit(1);
+            return;
         }
 
         Gson gson = new Gson();
@@ -339,9 +336,8 @@ public class Client implements Runnable {
             dataOutputStream    = new DataOutputStream(socketScheduler.getOutputStream());
             dataInputStream     = new DataInputStream(new BufferedInputStream(socketScheduler.getInputStream()));
         } catch (IOException e) {
-            System.out.format("Cannot open connection to Scheduler ( %s , %d)\n",
-                    this.addressScheduler,this.portScheduler);
-            System.exit(1);
+            //System.out.format("Cannot open connection to Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
+            //System.exit(1);
             return;
         }
 
@@ -350,18 +346,17 @@ public class Client implements Runnable {
         try {
             dataOutputStream.writeUTF(String.format("{code:%d}",CODE_MESSAGE_GET_MEMBERS_LIST));
         } catch (IOException e) {
-            System.out.format("Error: Cannot write JSON to Scheduler ( %s , %d)",
-                    this.addressScheduler,this.portScheduler);
-            System.exit(1);
+            //System.out.format("Error: Cannot write JSON to Scheduler ( %s , %d)",this.addressScheduler,this.portScheduler);
+            //System.exit(1);
+            return;
         }
 
         try {
             // Obtenemos el contenido del mensaje del scheduler
             content = dataInputStream.readUTF();
         } catch (IOException e) {
-            System.out.format("Error: Cannot read answer from Scheduler ( %s , %d)\n",
-                    this.addressScheduler,this.portScheduler);
-            System.exit(1);
+            //System.out.format("Error: Cannot read answer from Scheduler ( %s , %d)\n",this.addressScheduler,this.portScheduler);
+            //System.exit(1);
             return ;
         }
 
@@ -371,9 +366,9 @@ public class Client implements Runnable {
         try {
             jsonArrayMembers = new JsonParser().parse(content).getAsJsonArray();
         }catch (JsonSyntaxException e){
-            System.out.println("Error : incorrect message sent by scheduler");
-            System.out.println("Message: " + content);
-            System.exit(1);
+            //System.out.println("Error : incorrect message sent by scheduler");
+            //System.out.println("Message: " + content);
+            //System.exit(1);
             return ;
         }
 
@@ -449,7 +444,7 @@ public class Client implements Runnable {
         try {
             socket = new Socket(serverInfo.getAddress(), serverInfo.getPort());
         } catch (IOException e) {
-            System.out.format("[Scheduler] Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
+            System.out.format("Error: Cannot connect to Server ( %s , %d)\n",serverInfo.getAddress(), serverInfo.getPort());
             return false;
         }
 

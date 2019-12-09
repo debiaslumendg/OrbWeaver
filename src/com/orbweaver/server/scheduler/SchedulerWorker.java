@@ -122,6 +122,8 @@ public class SchedulerWorker implements Runnable {
 
                 content = gson.toJson(this.scheduler.getServers());
                 break;
+            case Constants.CODE_MESSAGE_PING:
+                break;
             case Constants.CODE_MESSAGE_EXEC_SERVICE:
                 // Cliente quiere ejecutar un servicio
                 RequestServiceMsg requestServiceMsg = gson.fromJson(content, RequestServiceMsg.class);
@@ -162,13 +164,15 @@ public class SchedulerWorker implements Runnable {
 
         }
 
-        try {
-            dataOutputStream.writeUTF(content);
-        } catch (IOException e) {
-            throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Client ( %s , %d)",
-                            this.clientSocket.getInetAddress().getHostName(),this.clientSocket.getPort())
-                    , e);
+        if(StringUtils.isNotEmpty(content)) {
+            try {
+                dataOutputStream.writeUTF(content);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        String.format("Error: Cannot write JSON to Client ( %s , %d)",
+                                this.clientSocket.getInetAddress().getHostName(), this.clientSocket.getPort())
+                        , e);
+            }
         }
 
         //long time = System.currentTimeMillis();

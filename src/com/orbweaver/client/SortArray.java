@@ -19,10 +19,10 @@ import static com.orbweaver.commons.Util.getArgStr;
  */
 public class SortArray implements OnServiceArgumentsToServer {
 
-    private int[] sortedArray;
+    private int[] array;
 
-    public SortArray(int[] sortedArray) {
-        this.sortedArray = sortedArray;
+    public SortArray(int[] array) {
+        this.array = array;
     }
 
     /**
@@ -37,7 +37,7 @@ public class SortArray implements OnServiceArgumentsToServer {
         Gson gson = new Gson();
         String content;
 
-        content = String.format("{\"array\":\"%s\"}",Arrays.toString(sortedArray));
+        content = String.format("{\"array\":\"%s\"}",Arrays.toString(array));
 
         try {
             dataOutputStream.writeUTF(content);
@@ -58,7 +58,7 @@ public class SortArray implements OnServiceArgumentsToServer {
         // Parseamos el mensaje a JSON
         JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
 
-        System.out.format("Sorted array '%s'.\n",Arrays.toString(this.sortedArray),(jsonObjectMessage.get("sort_array")));
+        System.out.format("Sorted array %s.\n",(jsonObjectMessage.get("sorted_array")));
     }
 
 
@@ -91,16 +91,16 @@ public class SortArray implements OnServiceArgumentsToServer {
                 if(args[i].startsWith("-")){
                     i++;
                 }else {
-                    String[] array = args[i].split("[ ]");
-                    // arrayToSort = new int[array.length];
-                    arrayToSort = Arrays.stream(array[0].substring(1, array[0].length()-1).split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
+                    String[] arr = args[i].split("[ ]");
+                    // arrayToSort = new int[arr.length];
+                    arrayToSort = Arrays.stream(arr[0].substring(1, arr[0].length()-1).split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
 
-                    // for (int j = 0; j < arrayToSort.length; j++){
-                    //     System.out.println(array[j].replace("[", ""));
-                    //     System.out.println(array.length);
-                        // System.out.printf("number %d+1\n", arrayToSort[j]+1);
+                    for (int j = 0; j < arrayToSort.length; j++){
+                    //     System.out.println(arr[j].replace("[", ""));
+                    //     System.out.println(arr.length);
+                        System.out.printf("number %d\n", arrayToSort[j]);
                     //     arrayToSort[j] = Integer.parseInt(args[i].replace("[", ""));
-                    // }
+                    }
                     anyError = false;
                 }
             }

@@ -37,7 +37,7 @@ public class SortArray implements OnServiceArgumentsToServer {
         Gson gson = new Gson();
         String content;
 
-        content = String.format("{\"array\":%s}",Arrays.toString(sortedArray));
+        content = String.format("{\"array\":\"%s\"}",Arrays.toString(sortedArray));
 
         try {
             dataOutputStream.writeUTF(content);
@@ -58,7 +58,7 @@ public class SortArray implements OnServiceArgumentsToServer {
         // Parseamos el mensaje a JSON
         JsonObject jsonObjectMessage = new JsonParser().parse(content).getAsJsonObject();
 
-        System.out.format("Sorted array '%s'.\n",Arrays.toString(this.sortedArray),(jsonObjectMessage.get("sort_array").getAsInt() == 1)?"":"no ");
+        System.out.format("Sorted array '%s'.\n",Arrays.toString(this.sortedArray),(jsonObjectMessage.get("sort_array")));
     }
 
 
@@ -92,13 +92,14 @@ public class SortArray implements OnServiceArgumentsToServer {
                     i++;
                 }else {
                     String[] array = args[i].split("[ ]");
-                    arrayToSort = new int[array.length];
+                    // arrayToSort = new int[array.length];
                     arrayToSort = Arrays.stream(array[0].substring(1, array[0].length()-1).split(",")).map(String::trim).mapToInt(Integer::parseInt).toArray();
 
-                    // for (int j = 0; j < array.length; j++){
-                    //     System.out.println(array[i].replace("[", ""));
+                    // for (int j = 0; j < arrayToSort.length; j++){
+                    //     System.out.println(array[j].replace("[", ""));
                     //     System.out.println(array.length);
-                    //     arrayToSort[i] = Integer.parseInt(args[i].replace("[", ""));
+                        // System.out.printf("number %d+1\n", arrayToSort[j]+1);
+                    //     arrayToSort[j] = Integer.parseInt(args[i].replace("[", ""));
                     // }
                     anyError = false;
                 }

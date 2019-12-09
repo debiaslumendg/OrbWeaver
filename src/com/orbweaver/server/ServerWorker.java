@@ -133,6 +133,7 @@ public class ServerWorker implements Runnable{
                 ServerInfo serverInfo = gson.fromJson(jsonObjectMessage.get("scheduler"),ServerInfo.class);
                 this.server.setScheduler(serverInfo);
                 this.server.setEleccionStarted(false);
+                this.server.triggerSavedRequestUpdates();
                 break;
             // Mensaje recibido: "Ping" . ¿Are you alive?
             case Constants.CODE_MESSAGE_PING:

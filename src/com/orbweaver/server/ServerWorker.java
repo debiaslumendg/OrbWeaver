@@ -165,7 +165,7 @@ public class ServerWorker implements Runnable{
                     updateRequest.setStatus(STATUS_ERROR_REQUEST);
                 }
 
-                if(updateRequest.isSuccess()) {
+                if(updateRequest.isSuccess() && this.server.isScheduler()) {
                     // Establece el estado de la request en mi lista
                     myrequest.setStatus(RequestInfo.StatusRequest.RUNNING);
                 }
@@ -191,7 +191,7 @@ public class ServerWorker implements Runnable{
                     if(updateRequest == null) {
                         this.server.startEleccion();
                         this.server.addRequestIdToCompleteWhenSchedulerAvailable(requestServiceMsg.getIdRequest());
-                    }else if(updateRequest.isSuccess())
+                    }else if(updateRequest.isSuccess()&& this.server.isScheduler())
                         myrequest.setStatus(RequestInfo.StatusRequest.DONE);
                 }
                 break;

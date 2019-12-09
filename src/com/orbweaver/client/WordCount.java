@@ -77,7 +77,7 @@ public class WordCount implements   OnServiceArgumentsToServer{
             dataOutputStream.writeUTF(content);
         } catch (IOException e) {
             throw new RuntimeException(
-                    String.format("Error: Cannot write JSON to Server ( %s , %d)",
+                    String.format("[Client] Error: Cannot write JSON to Server ( %s , %d)",
                             socket.getInetAddress().getHostName(),socket.getPort()), e);
         }
 

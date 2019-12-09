@@ -2,6 +2,20 @@
     "configurations": [
         {
             "type": "java",
+            "name": "CodeLens (Launch) - SortArray",
+            "request": "launch",
+            "mainClass": "com.orbweaver.client.SortArray",
+            "projectName": "OrbWeaver"
+        },
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - SortArrayServer",
+            "request": "launch",
+            "mainClass": "com.orbweaver.server.SortArrayServer",
+            "projectName": "OrbWeaver"
+        },
+        {
+            "type": "java",
             "name": "CodeLens (Launch) - EsPrimo",
             "request": "launch",
             "mainClass": "com.orbweaver.client.EsPrimo",

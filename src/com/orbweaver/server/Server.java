@@ -86,10 +86,8 @@ public class Server {
             socketScheduler = new Socket(this.coordinatorAddress,this.coordinatorPort);
             System.out.println("[Server] Connected to the Scheduler");
         } catch (IOException e) {
-            // TODO: Puede time out
-            throw new RuntimeException(
-                    String.format("[Server] Error: Cannot connect to Scheduler ( %s , %d)",
-                            this.coordinatorAddress,this.coordinatorPort), e);
+            System.out.format("Error: Cannot connect to Scheduler ( %s , %d)\n",this.coordinatorAddress,this.coordinatorPort);
+            System.exit(1);
         }
 
 
